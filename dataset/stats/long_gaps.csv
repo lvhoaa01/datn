@@ -1,0 +1,17 @@
+split,feature,start,hours
+train,turbidity_fnu,2019-08-16 14:15:00,7.75
+train,turbidity_fnu,2019-08-18 02:15:00,7.75
+train,turbidity_fnu,2019-08-19 03:15:00,7.25
+val,do_mg_l,2024-09-02 14:00:00,21.25
+val,water_temp_c,2024-09-02 14:00:00,21.25
+val,ph,2024-09-02 14:00:00,21.25
+val,spc_us_cm,2024-09-02 14:00:00,21.25
+val,spc_us_cm,2025-02-14 03:30:00,99.25
+val,turbidity_fnu,2024-09-02 14:00:00,21.25
+val,chl_fluor_ug_l,2024-09-02 14:00:00,21.25
+test,do_mg_l,2025-09-10 09:30:00,24.5
+test,water_temp_c,2025-09-10 09:30:00,24.5
+test,ph,2025-09-10 09:30:00,24.5
+test,spc_us_cm,2025-09-10 09:30:00,24.5
+test,turbidity_fnu,2025-09-10 09:30:00,24.5
+test,chl_fluor_ug_l,2025-09-10 09:30:00,24.5

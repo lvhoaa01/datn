@@ -1,0 +1,16 @@
+﻿station,description,station_access_type,latitude,longitude,hydrologic_area,basin,county,habitat_type,start_date,end_date,EXO2_start_date,EXO2_start_time,notes
+ANH,San Joaquin River at Antioch Ship Canal,Land,38.0178299,-121.8029633,San Joaquin River,San Joaquin R,Contra Costa,Tidal River Channel (brackish),2008-01-01,2025-12-31,2015-12-07,09:30,
+FRK,Franks Tract Mid Tract,Pile,38.046417,-121.5981,San Joaquin River,Delta,Contra Costa,Tidal Flooded Island (freshwater),2015-06-05,2025-12-31,2019-08-19,09:30,
+GZL,Grizzly Bay at Dolphin near Suisun Slough,Pile,38.12425,-122.038117,San Francisco Bay,Delta,Solano,Tidal Embayment (brackish),2015-07-29,2025-12-31,2019-10-08,12:15,
+HON,Honker Bay near Wheeler Point,Pile,38.0722,-121.9371,San Francisco Bay,Delta,Solano,Tidal Embayment (brackish),2015-07-28,2025-12-31,2019-08-16,10:15,
+MAL,Sacramento River at Chipps Island (Mallard),Land,38.04280472,-121.9200897,Sacramento River,Sacramento R,Contra Costa,Tidal River Channel (brackish),2008-04-16,2025-12-31,2015-07-14,12:00,
+MRZ,Suisun Bay at Martinez,Land,38.02763748,-122.1404877,San Francisco Bay,East Bay,Contra Costa,Tidal River Channel (brackish),2007-12-03,2025-12-31,2014-07-28,11:15,
+MSD,San Joaquin River at Mossdale Bridge,Land,37.786,-121.306,San Joaquin River,San Joaquin R,San Joaquin,Tidal River Channel (freshwater),2007-12-26,2025-12-31,2016-06-22,12:15,
+PPT,San Joaquin River at Prisoners Point,Pile,38.058505,-121.55681,San Joaquin River,San Joaquin R,San Joaquin,Tidal River Channel (Freshwater),2008-08-12,2025-12-31,2018-04-10,10:00,
+RRI,San Joaquin River at Rough and Ready Island,Land,37.963,-121.365,San Joaquin River,San Joaquin R,San Joaquin,Tidal River Channel (freshwater),2007-12-25,2025-12-31,2016-03-16,12:00,
+RVB,Sacramento River at Rio Vista Bridge,Land,38.159737,-121.686355,Sacramento River,Sacramento R,Solano,Tidal River Channel (freshwater),2008-03-04,2025-12-31,2016-04-19,09:15,
+RYC,Suisun Bay off Middle Point near Nichols (Ryer),Pile,38.083971,-121.995878,San Francisco Bay,Delta,Solano,Tidal Embayment (brackish),2015-07-28,2025-12-31,2019-08-16,11:00,
+SJR,San Joaquin River near Vernalis,Land,37.67929,-121.26511,San Joaquin River,San Joaquin R,San Joaquin,Tidal River Channel (freshwater),2005-07-27,2025-12-31,2014-04-16,10:00,
+SRH,Sacramento River at Hood,Land,38.36798096,-121.5199585,Sacramento River,Sacramento R,Sacramento,Tidal River Channel (freshwater),2008-02-01,2025-12-31,2013-12-12,10:00,"Primary was upgraded to EXO2 on 12/12/2013, while backup remained 6600 from which data was used occasionally. Backup was upgraded to EXO2 on 10/7/2015."
+SSI,Sherman Island near Antioch,Pile,38.074097,-121.761736,Sacramento River,Sacramento R,Sacramento,Tidal River Channel (freshwater),2015-07-29,2025-12-31,2019-08-16,12:15,
+TWI,San Joaquin River at Twitchell Island,Pile,38.0969,-121.6691,San Joaquin River,San Joaquin R,Sacramento,Tidal River Channel (freshwater),2015-06-05,2025-12-31,2019-04-23,09:30,

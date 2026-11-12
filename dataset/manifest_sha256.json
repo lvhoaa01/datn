@@ -1,0 +1,70 @@
+{
+ "raw/cemp_RRI_2007_2025_source.csv": {
+  "sha256": "199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398",
+  "bytes": 33387635
+ },
+ "splits/train.csv": {
+  "sha256": "ebcbc3f34f20a0728da9eea3d8271e94c80b2c7d89aed3f1fc639584eac19fc3",
+  "bytes": 9415068
+ },
+ "splits/val.csv": {
+  "sha256": "25a384725918bef3db7dfbcec7474ea1a42c547404dc3b05a6c95b153ef7b708",
+  "bytes": 1299051
+ },
+ "splits/test.csv": {
+  "sha256": "f3053f6db57c9fbdc43246564f5eabdf0eaad6316d93ccef753e69fedee59aaf",
+  "bytes": 1303512
+ },
+ "metadata/cemp_station_metadata.csv": {
+  "sha256": "1e51e405e93cb8fe5149de51aa6ddd56a63afa9d7b3ae342c815511ca05158a4",
+  "bytes": 2977
+ },
+ "metadata/cemp_edi_1177_9_eml.xml": {
+  "sha256": "3e2bd422423efe964499b436124fd7e252692d647ae4049952cd28faa26d9fbd",
+  "bytes": 233304
+ },
+ "scripts/make_splits.py": {
+  "sha256": "d24949299d920c5bd9c69c64b884073baf73c6e79ecc7f5c537ff31e238a2151",
+  "bytes": 2018
+ },
+ "scripts/verify.py": {
+  "sha256": "c82efc089a11e2125ab763fcc57df4f3b488c5ee1564d48ef3002906b7fb559e",
+  "bytes": 5217
+ },
+ "scripts/describe.py": {
+  "sha256": "87ece04c84c6787843618a537ef2524eafc1706d0ad7d5e267a89e0b1acb01f1",
+  "bytes": 8571
+ },
+ "README.md": {
+  "sha256": "d8cb3452a35eb585a27b993d1cda0530328be6d07d6672291ffbb2efdeab3bb3",
+  "bytes": 21964
+ },
+ "stats/feature_stats.csv": {
+  "sha256": "4c1eb48de0283c4272482a5df02aec6fbb3411917ee2fe7affca4f75467b4cd9",
+  "bytes": 2306
+ },
+ "stats/gap_stats.csv": {
+  "sha256": "e310bfc2da44c72cdb76fbc3dce79cea9cb98675d6a3985497f0b8df80a6a45c",
+  "bytes": 782
+ },
+ "stats/long_gaps.csv": {
+  "sha256": "90a70e1d88d1429e54bb41d0b087a5280b40ca278a5053df9ccdbb1c61eb2955",
+  "bytes": 687
+ },
+ "stats/do_dynamics.csv": {
+  "sha256": "25fc1022f9e96ea2324be4558baf2eaee07778a79d6fb504bfa0f92aa9f7a36a",
+  "bytes": 975
+ },
+ "stats/window_counts.csv": {
+  "sha256": "d3ab30ef5ec725df71fd8f4aa3559c9c1c34699b89b30c1b67a11155a81e35f0",
+  "bytes": 147
+ },
+ "stats/monthly_dynamics.csv": {
+  "sha256": "60c13f40861a51c4d901ee41e88308179f369a32ec642031fa02481166398a22",
+  "bytes": 926
+ },
+ "stats/split_by_regime.csv": {
+  "sha256": "e316b21de71cab8137f85935e3d8602a96fc1091c78bc9195060d0266683e140",
+  "bytes": 446
+ }
+}

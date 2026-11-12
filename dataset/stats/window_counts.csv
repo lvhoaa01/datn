@@ -1,0 +1,7 @@
+split,window,count
+train,24h_to_6h,187862
+train,7d_to_24h,180076
+val,24h_to_6h,24571
+val,7d_to_24h,20003
+test,24h_to_6h,25940
+test,7d_to_24h,24572
