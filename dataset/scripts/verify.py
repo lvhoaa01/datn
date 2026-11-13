@@ -34,7 +34,10 @@ TRACKED = ["raw/cemp_RRI_2007_2025_source.csv", "splits/train.csv", "splits/val.
            "metadata/cemp_station_metadata.csv", "metadata/cemp_edi_1177_9_eml.xml",
            "scripts/make_splits.py", "scripts/verify.py", "scripts/describe.py", "README.md",
            "stats/feature_stats.csv", "stats/gap_stats.csv", "stats/long_gaps.csv", "stats/do_dynamics.csv",
-           "stats/window_counts.csv", "stats/monthly_dynamics.csv", "stats/split_by_regime.csv"]
+           "stats/window_counts.csv", "stats/monthly_dynamics.csv", "stats/split_by_regime.csv",
+           "DE_XUAT_TIEN_XU_LY.md", "analysis/cleaning_study.py", "analysis/window_scaler_study.py",
+           "analysis/gap_distribution_study.py", "analysis/imputation_benchmark.py", "analysis/threshold_study.py",
+           "analysis/gap_histogram_figure.py"]
 
 errors = []
 

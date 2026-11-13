@@ -1,1 +1,9 @@
 .env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Ung vien dataset va audit (tam thoi, 558 MB)
+candidate_dataset/

@@ -1,0 +1,7 @@
+feature,out_of_bounds,spikes_isolated,spikes_per_10k,longest_flat_h,flat_runs_ge_6h,step_p999,step_max,skew_raw,skew_log1p
+do_mg_l,0,45,2.37,3.0,0,0.897,2.44,0.096,-0.168
+water_temp_c,0,2,0.11,4.5,0,0.69,1.72,0.11,-0.181
+ph,0,55,2.9,9.5,15,0.25,0.71,0.241,0.126
+spc_us_cm,0,63,3.32,15.25,80,79.0,483.0,0.528,-0.692
+turbidity_fnu,0,84,4.44,1.0,0,10.343,37.71,4.262,0.929
+chl_fluor_ug_l,0,282,14.89,1.0,0,6.56,21.3,2.995,0.599
