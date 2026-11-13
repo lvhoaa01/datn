@@ -73,9 +73,9 @@ P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% s�
 
 ### 4.2. Dữ liệu khuyết
 
-Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: 96.7% số đợt thiếu (các ô NA liên tiếp của cùng một biến) dài không quá 1 giờ.
+Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 96.7% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở DE_XUAT_TIEN_XU_LY.md, mục 5.2.
 
-Chỉ có sáu đợt thiếu dài hơn 6 giờ:
+Chỉ có sáu khoảng trống dài hơn 6 giờ:
 
 | Tập | Bắt đầu | Độ dài | Biến | Bối cảnh |
 |---|---|---|---|---|
@@ -191,7 +191,7 @@ scripts/verify.py kiểm tra:
 - từng ô của tập con trùng nguyên văn với file nguồn;
 - ba tập nối tiếp nhau, không chồng lấn; số ô NA khớp file nguồn.
 
-Kết quả ngày 2026-11-12: đạt toàn bộ, 0 ô sai khác. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
+Kết quả ngày 2026-11-13: đạt toàn bộ, 0 ô sai khác. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
 
 ```
 python scripts/make_splits.py      # tao lai splits/ tu raw/
