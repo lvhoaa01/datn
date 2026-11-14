@@ -1,8 +1,8 @@
 # Quy trình làm sạch dữ liệu dataset CEMP RRI
 
-Phiên bản ngày 2026-11-14. Trạng thái: quy trình đã chốt và đã cài đặt trong scripts/build_base.py; kết quả nằm trong base_splits/.
+Phiên bản ngày 2026-11-14. Trạng thái: quy trình đã chốt và đã cài đặt trong scripts/build_base_splits.py; kết quả nằm trong base_splits/.
 
-Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở README.md, mục 5) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình gồm ba bước: kiểm tra miền giá trị, sửa điểm DO bất thường và xử lý khoảng trống. Mã phân tích làm căn cứ nằm trong analysis/, kết quả trong analysis/results/.
+Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở README.md, mục 5) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình gồm ba bước: kiểm tra miền giá trị, sửa điểm DO bất thường và xử lý khoảng trống. Mã phân tích làm căn cứ nằm trong thư mục scripts/ ở gốc repo, kết quả trong artifacts/dataset/.
 
 ## 1. Khái niệm
 
@@ -102,7 +102,7 @@ Ví dụ khoảng trống dài: lần bảo trì trong val, cả sáu biến tr�
 
 ### 5.2. Phân bố độ dài khoảng trống
 
-![Độ dài khoảng trống](analysis/results/gap_length_histogram.png)
+![Độ dài khoảng trống](../artifacts/dataset/gap_length_histogram.png)
 
 Tính trên sáu biến và cả ba tập (2377 khoảng trống):
 
@@ -177,7 +177,7 @@ Lý do không chọn các phương pháp còn lại:
 | G (MissForest) | Kém nhất, sai số gấp 2 đến 6 lần D: khi cả sáu biến cùng trống, nó chỉ còn giờ trong ngày và ngày trong năm để dựa vào. G chỉ tốt nhất khi một biến trống riêng lẻ (pH, chlorophyll), trường hợp hầu như không xảy ra với DO (10 trên 543 ô) |
 | H (SAITS) | Không vượt D ở độ dài nào, lại cần huấn luyện một mạng học sâu riêng |
 
-Kết quả đầy đủ cho sáu biến: analysis/results/imputation_benchmark.csv.
+Kết quả đầy đủ cho sáu biến: artifacts/dataset/imputation_benchmark.csv.
 
 ### 5.4. Chọn ngưỡng 8 giờ
 
@@ -205,7 +205,7 @@ Từ 12 giờ, F tốt hơn D rõ rệt, nên ngưỡng không nên vượt 10 g
 | 6 giờ | 16 | 392 | 720 | 217 |
 | Từ 7.75 đến 21 giờ | 13 | 0 | 720 | 217 |
 
-Số cửa sổ tính cho cấu hình đầu vào 24 giờ, dự báo 6 giờ; cấu hình 7 ngày, 24 giờ cho cùng kết luận (analysis/results/threshold_sensitivity.csv).
+Số cửa sổ tính cho cấu hình đầu vào 24 giờ, dự báo 6 giờ; cấu hình 7 ngày, 24 giờ cho cùng kết luận (artifacts/dataset/threshold_sensitivity.csv).
 
 **Chọn 8 giờ.** Hai căn cứ cho khoảng 7.75 đến 10 giờ. 8 giờ là số tròn trong khoảng này: với RRI, kết quả giống mọi ngưỡng trong khoảng; với dữ liệu mới tải lên hệ thống web, khoảng trống dài hơn 8 giờ sẽ không bị điền ở vùng D kém chính xác.
 
@@ -245,7 +245,7 @@ Các đợt bị mất nằm trong vài ngày nóng ngay sau hai lần bảo tr�
 
 ### 6.1. Đầu ra
 
-Thư mục base_splits/ gồm ba file train.csv, val.csv, test.csv, sinh bởi scripts/build_base.py. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l. Ô cờ 0 chép nguyên văn từ nguồn; ô cờ 1 và 2 làm tròn 4 chữ số thập phân; ô cờ 3 ghi NA. Ở bước tạo cửa sổ chỉ cần bỏ mọi cửa sổ có ô cờ 3.
+Thư mục base_splits/ gồm ba file train.csv, val.csv, test.csv, sinh bởi scripts/build_base_splits.py. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l. Ô cờ 0 chép nguyên văn từ nguồn; ô cờ 1 và 2 làm tròn 4 chữ số thập phân; ô cờ 3 ghi NA. Ở bước tạo cửa sổ chỉ cần bỏ mọi cửa sổ có ô cờ 3.
 
 ### 6.2. Cờ
 
@@ -279,20 +279,20 @@ Ví dụ với ô DO lúc 2019-07-15 10:00 (đầu vào 24 giờ, dự báo 6 gi
 
 ## 8. Tái lập
 
-Chạy từ thư mục dataset. Tạo dữ liệu đã làm sạch và kiểm chứng:
+Môi trường Python khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo. Tạo dữ liệu đã làm sạch và kiểm chứng:
 
 ```
-python scripts/build_base.py                # tao base_splits/ tu raw/ (numpy)
-python scripts/verify.py                    # kiem chung, gom ca cac so lieu o muc 5.5 (thu vien chuan)
+uv run python scripts/build_base_splits.py         # tạo dataset/base_splits/ từ dataset/raw/
+uv run python scripts/verify_dataset.py            # kiểm chứng, gồm cả các số liệu ở mục 5.5
 ```
 
-Các phân tích làm căn cứ (đọc thẳng từ raw/, ghi vào analysis/results/):
+Các phân tích làm căn cứ (đọc thẳng từ dataset/raw/, ghi vào artifacts/dataset/):
 
 ```
-python analysis/cleaning_study.py           # muc 3, 4: mien gia tri, buoc thay doi 15 phut, diem DO dao chieu (pandas, numpy)
-python analysis/imputation_benchmark.py     # muc 5.3: tam phuong phap A den H (them scikit-learn; torch, pypots cho H, khoang 35 phut)
-python analysis/threshold_study.py          # muc 5.2, 5.4: bang tan suat, diem chuyen, do nhay theo nguong
-python analysis/gap_histogram_figure.py     # bieu do muc 5.2 (matplotlib)
+uv run python scripts/cleaning_study.py            # mục 3, 4: miền giá trị, bước thay đổi 15 phút, điểm DO đảo chiều
+uv run python scripts/imputation_benchmark.py      # mục 5.3: tám phương pháp A đến H, khoảng 35 phút
+uv run python scripts/gap_threshold_study.py       # mục 5.2, 5.4: bảng tần suất, điểm chuyển, độ nhạy theo ngưỡng
+uv run python scripts/gap_histogram_figure.py      # biểu đồ mục 5.2, chạy sau gap_threshold_study.py
 ```
 
-Thêm `--no-saits` vào lệnh imputation_benchmark.py để bỏ qua H khi không có GPU hoặc thư viện học sâu.
+Phương pháp H (SAITS) cần thêm gói PyPOTS: cài bằng `uv sync --group benchmark`. Thêm `--no-saits` vào lệnh imputation_benchmark.py để bỏ qua H khi không có GPU hoặc PyPOTS.

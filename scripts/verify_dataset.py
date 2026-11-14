@@ -1,16 +1,16 @@
-"""Kiem chung toan ven dataset (chi dung thu vien chuan Python).
+"""Kiểm chứng toàn vẹn dataset, chỉ dùng thư viện chuẩn Python (độc lập với numpy, pandas dùng khi xử lý).
 
-Kiem tra:
-  1. SHA-256 cua cac file theo doi khop manifest.
-  2. File nguon: dung so dong, luoi 15 phut deu, khong trung moc.
-  3. base_splits: dung tieu de, khoang thoi gian, so dong; luoi 15 phut lien tuc; ba tap noi tiep, khong chong lan.
-  4. Tung o so voi nguon: co 0 trung nguyen van; co 1 la o NA trong nguon; co 2 la gia tri ngoai mien
-     hoac diem DO bat thuong da biet; co 3 de NA.
-  5. Moi doan co 1 va 2 dai khong qua 32 moc va bang noi suy tuyen tinh giua hai so do ke ben (sai so lam tron 1e-4);
-     moi doan co 3 dai hon 32 moc hoac cham dau, cuoi tap.
-  6. So o theo co va so cua so bi bo khop so lieu trong README.md va LAM_SACH.md.
-Chay tu thu muc dataset: python scripts/verify.py           (kiem chung)
-                         python scripts/verify.py --write   (ghi lai manifest)
+Kiểm tra:
+  1. SHA-256 của các file theo dõi (dataset/, scripts/, artifacts/dataset/) khớp manifest.
+  2. File nguồn: đúng số dòng, lưới 15 phút đều, không trùng mốc.
+  3. base_splits: đúng tiêu đề, khoảng thời gian, số dòng; lưới 15 phút liên tục; ba tập nối tiếp, không chồng lấn.
+  4. Từng ô so với nguồn: cờ 0 trùng nguyên văn; cờ 1 là ô NA trong nguồn; cờ 2 là giá trị ngoài miền
+     hoặc điểm DO bất thường đã biết; cờ 3 để NA.
+  5. Mỗi đoạn cờ 1 và 2 dài không quá 32 mốc và bằng nội suy tuyến tính giữa hai số đo kề bên (sai số làm tròn 1e-4);
+     mỗi đoạn cờ 3 dài hơn 32 mốc hoặc chạm đầu, cuối tập.
+  6. Số ô theo cờ và số cửa sổ bị bỏ khớp số liệu trong dataset/README.md và dataset/LAM_SACH.md.
+Chạy từ gốc repo: uv run python scripts/verify_dataset.py           (kiểm chứng)
+                  uv run python scripts/verify_dataset.py --write   (ghi lại manifest)
 """
 import csv
 import hashlib
@@ -19,9 +19,9 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-from common import BASE, CONFIGS, FEATURES, FLAGS, FMT, MAX_GAP, NAMES, RANGES, RAW, ROOT, SOURCE
+from common import BASE, CONFIGS, FEATURES, FLAGS, FMT, MAX_GAP, NAMES, RANGES, RAW, REPO, SOURCE
 
-MANIFEST = os.path.join(ROOT, "manifest_sha256.json")
+MANIFEST = os.path.join(REPO, "dataset", "manifest_sha256.json")   # đường dẫn trong manifest tính từ gốc repo
 STEP = timedelta(minutes=15)
 RAW_ROWS = 631835
 EXPECTED = {"train": ("2019-01-01 00:00:00", "2024-05-31 23:45:00", 189888),
@@ -29,39 +29,42 @@ EXPECTED = {"train": ("2019-01-01 00:00:00", "2024-05-31 23:45:00", 189888),
             "test": ("2025-03-01 00:00:00", "2025-11-30 23:45:00", 26400)}
 SPIKES = {"2019-08-19 00:00:00", "2021-09-08 22:15:00", "2021-10-28 17:30:00", "2023-07-11 08:45:00"}
 FLAG_COUNTS = {"train": {1: 2457, 2: 4, 3: 0}, "val": {1: 305, 2: 0, 3: 907}, "test": {1: 171, 2: 0, 3: 588}}
-# cau hinh -> {tap: (so cua so co the tao, so cua so bi bo)}
+# cấu hình: {tập: (số cửa sổ có thể tạo, số cửa sổ bị bỏ)}, khớp README mục 5.2
 WINDOWS = {"24h_6h": {"train": (189769, 0), "val": (26185, 720), "test": (26377, 217)},
            "7d_24h": {"train": (189121, 0), "val": (26113, 2016), "test": (26305, 865)}}
-FIXED = ["raw/cemp_RRI_2007_2025_source.csv", "metadata/cemp_station_metadata.csv",
-         "metadata/cemp_edi_1177_9_eml.xml", "README.md", "LAM_SACH.md"]
+FIXED = ["dataset/raw/cemp_RRI_2007_2025_source.csv", "dataset/metadata/cemp_station_metadata.csv",
+         "dataset/metadata/cemp_edi_1177_9_eml.xml", "dataset/README.md", "dataset/LAM_SACH.md"]
 
 errors = []
 
 
 def check(cond, msg):
+    """Ghi lỗi msg nếu cond sai; trả về cond để dùng tiếp trong if."""
     if not cond:
         errors.append(msg)
     return cond
 
 
 def tracked():
-    files = FIXED + [f"base_splits/{n}.csv" for n in NAMES]
-    for d in ("scripts", "analysis", "analysis/results"):
-        files += sorted(f"{d}/{f}" for f in os.listdir(os.path.join(ROOT, d))
-                        if os.path.isfile(os.path.join(ROOT, d, f)) and not f.endswith(".pyc"))
+    """Danh sách file manifest phải theo dõi: file cố định, base_splits, mọi file trong scripts/ và artifacts/dataset/."""
+    files = FIXED + [f"dataset/base_splits/{n}.csv" for n in NAMES]
+    for d in ("scripts", "artifacts/dataset"):
+        files += sorted(f"{d}/{f}" for f in os.listdir(os.path.join(REPO, d))
+                        if os.path.isfile(os.path.join(REPO, d, f)) and not f.endswith(".pyc"))
     return files
 
 
 def sha256(path):
+    """Mã SHA-256 của một file, đường dẫn tính từ gốc repo."""
     h = hashlib.sha256()
-    with open(os.path.join(ROOT, path), "rb") as f:
+    with open(os.path.join(REPO, path), "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
 def runs(mask):
-    """Cac doan True lien tiep: list (bat dau, do dai)."""
+    """Các đoạn True liên tiếp: list (bắt đầu, độ dài)."""
     out, a = [], None
     for i, m in enumerate(mask + [False]):
         if m and a is None:
@@ -73,6 +76,7 @@ def runs(mask):
 
 
 def check_split(name, raw):
+    """Kiểm tra 3, 4, 5 cho một tập; trả về (danh sách thời điểm, cờ từng dòng) cho kiểm tra 6."""
     a_exp, b_exp, n_exp = EXPECTED[name]
     with open(os.path.join(BASE, f"{name}.csv"), newline="") as f:
         rd = csv.reader(f)
@@ -85,7 +89,7 @@ def check_split(name, raw):
     check(times[0] == a_exp and times[-1] == b_exp, f"{name}: span {times[0]} .. {times[-1]}")
     dt = [datetime.strptime(t, FMT) for t in times]
     check(all(y - x == STEP for x, y in zip(dt, dt[1:])), f"{name}: 15-min grid broken")
-    # 4. tung o so voi nguon
+    # 4. từng ô so với nguồn
     count = {k: 0 for k in range(4)}
     for t, v, fl in zip(times, vals, flags):
         src = raw.get(t)
@@ -107,7 +111,7 @@ def check_split(name, raw):
     spikes = {t for t, fl in zip(times, flags) if fl[0] == 2}
     check(spikes == (SPIKES if name == "train" else set()), f"{name}: DO flag-2 points {sorted(spikes)}")
     check({k: count[k] for k in (1, 2, 3)} == FLAG_COUNTS[name], f"{name}: flag counts {count}")
-    # 5. doan dien va doan trong dai
+    # 5. đoạn điền và đoạn trống dài
     n = len(rows)
     for j, c in enumerate(FEATURES):
         for a, ln in runs([fl[j] in (1, 2) for fl in flags]):
@@ -125,7 +129,7 @@ def check_split(name, raw):
 
 
 def check_windows(splits):
-    """Dem cua so theo quy tac cua common.window_starts, cai dat doc lap bang thu vien chuan."""
+    """Kiểm tra 6: đếm cửa sổ theo quy tắc của common.window_starts, cài đặt lại độc lập bằng thư viện chuẩn."""
     flags = [fl for _, f in splits for fl in f]
     long_ = [0]
     obs = [0]
@@ -147,14 +151,15 @@ def check_windows(splits):
 
 
 def main():
+    """Chạy kiểm tra 1 đến 6 theo thứ tự; thoát mã 1 và in tối đa 50 lỗi nếu có lỗi."""
     if "--write" in sys.argv:
-        man = {p: {"sha256": sha256(p), "bytes": os.path.getsize(os.path.join(ROOT, p))} for p in tracked()}
+        man = {p: {"sha256": sha256(p), "bytes": os.path.getsize(os.path.join(REPO, p))} for p in tracked()}
         json.dump(man, open(MANIFEST, "w"), indent=1)
         print("manifest written")
     man = json.load(open(MANIFEST))
     check(set(man) == set(tracked()), f"manifest file set differs: {sorted(set(man) ^ set(tracked()))}")
     for p, m in man.items():
-        check(os.path.exists(os.path.join(ROOT, p)) and sha256(p) == m["sha256"], f"sha256 mismatch: {p}")
+        check(os.path.exists(os.path.join(REPO, p)) and sha256(p) == m["sha256"], f"sha256 mismatch: {p}")
     print(f"[1] sha256: {len(man)} files checked")
     raw, prev = {}, None
     with open(RAW, newline="", encoding="utf-8-sig") as f:

@@ -1,27 +1,24 @@
-"""Muc sai so tham chieu cua hai cau hinh du bao tren base_splits (README.md muc 5.3); can pandas, numpy.
+"""Mức sai số tham chiếu của hai cấu hình dự báo trên base_splits (dataset/README.md mục 5.3).
 
-Cung cua so va cung mat na nhu khi danh gia mo hinh: cua so tu common.window_starts, sai so chi tinh tren
-moc nhan co DO co 0. Hai cach du bao khong can mo hinh:
-  giu_nguyen: moi buoc nhan bang DO o moc cuoi cua dau vao (t - 1).
-  cung_gio_hom_qua: buoc t + k bang DO tai t + k - 96 (luon nam trong dau vao vi dau vao toi thieu 96 moc).
-R2 = 1 - SSE / SST, SST tinh quanh trung binh DO that tren cac moc duoc tinh sai so cua tap.
-Ghi analysis/results/baselines.csv. Chay tu thu muc dataset: python analysis/baselines.py
+Cùng cửa sổ và cùng mặt nạ như khi đánh giá mô hình: cửa sổ từ common.window_starts, sai số chỉ tính trên
+mốc nhãn có DO cờ 0. Hai cách dự báo không cần mô hình:
+  giu_nguyen: mọi bước nhãn bằng DO ở mốc cuối của đầu vào (t - 1).
+  cung_gio_hom_qua: bước t + k bằng DO tại t + k - 96 (luôn nằm trong đầu vào vì đầu vào tối thiểu 96 mốc).
+R2 = 1 - SSE / SST, SST tính quanh trung bình DO thật trên các mốc được tính sai số của tập.
+Ghi artifacts/dataset/baselines.csv. Chạy từ gốc repo: uv run python scripts/baselines.py
 """
 import os
-import sys
 
 import numpy as np
 import pandas as pd
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from common import CONFIGS, NAMES, load_base_all, window_starts  # noqa: E402
+from common import CONFIGS, NAMES, STATS as OUT, load_base_all, window_starts
 
-OUT = os.path.join(ROOT, "analysis", "results")
-DAY = 96
+DAY = 96                  # số mốc 15 phút trong một ngày
 
 
 def main():
+    """Tính MAE, RMSE, R2 của hai cách cho mọi cấu hình và tập, ghi baselines.csv."""
     d = load_base_all()
     do = d["do_mg_l"].to_numpy()
     obs = d["flag_do_mg_l"].to_numpy() == 0

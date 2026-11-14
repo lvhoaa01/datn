@@ -1,12 +1,12 @@
-"""Tao base_splits/: ba tap train, val, test da lam sach, kem cot co cho tung bien (can numpy).
+"""Tạo dataset/base_splits/: ba tập train, val, test đã làm sạch, kèm cột cờ cho từng biến.
 
-Quy trinh (LAM_SACH.md), ap dung rieng tung tap, khong dung gia tri cua tap khac:
-  1. Gia tri ngoai mien vat ly bi loai (co 2).
-  2. Chi train: diem DO dao chieu don le khong kem bien doi nhiet do hoac pH bi loai (co 2).
-  3. Khoang trong khong qua 8 gio va co so do o hai dau: noi suy tuyen tinh (co 1, giu co 2 neu da co).
-     Khoang trong dai hon, hoac cham dau, cuoi tap: de NA (co 3).
-Co 0 la so do that, giu nguyen van chuoi nguon.
-Chay tu thu muc dataset: python scripts/build_base.py
+Quy trình (dataset/LAM_SACH.md), áp dụng riêng từng tập, không dùng giá trị của tập khác:
+  1. Giá trị ngoài miền vật lý bị loại (cờ 2).
+  2. Chỉ train: điểm DO đảo chiều đơn lẻ không kèm biến đổi nhiệt độ hoặc pH bị loại (cờ 2).
+  3. Khoảng trống không quá 8 giờ và có số đo ở hai đầu: nội suy tuyến tính (cờ 1, giữ cờ 2 nếu đã có).
+     Khoảng trống dài hơn, hoặc chạm đầu, cuối tập: để NA (cờ 3).
+Cờ 0 là số đo thật, giữ nguyên văn chuỗi nguồn.
+Chạy từ gốc repo: uv run python scripts/build_base_splits.py
 """
 import csv
 import os
@@ -15,14 +15,15 @@ import numpy as np
 
 from common import BASE, FEATURES, FLAGS, MAX_GAP, NAMES, RANGES, read_raw_split
 
-SPIKE_MG_L = 0.8          # buoc vao va ra toi thieu cua diem DO dao chieu
-COMOVE_TEMP_C = 0.3       # bien doi nhiet do cung moc cho thay khoi nuoc khac (hien tuong that)
-COMOVE_PH = 0.05
+SPIKE_MG_L = 0.8          # bước vào và bước ra tối thiểu của điểm DO đảo chiều, mg/L
+COMOVE_TEMP_C = 0.3       # nhiệt độ đổi cùng mốc từ 0.3 độ C: khối nước khác đi qua, là hiện tượng thật
+COMOVE_PH = 0.05          # tương tự, ngưỡng thay đổi pH cùng mốc
 OBSERVED, INTERP, REJECTED, LONG_GAP = 0, 1, 2, 3
 
 
 def do_spikes(X):
-    """Chi so cac moc DO lech qua SPIKE_MG_L so voi ca hai moc ke, nguoc dau, khong dong bien nhiet do hoac pH."""
+    """Chỉ số các mốc DO lệch quá SPIKE_MG_L so với cả hai mốc kề, cùng chiều lệch (đỉnh hoặc đáy nhọn),
+    và không có thay đổi nhiệt độ hoặc pH đi kèm."""
     do, tc, ph = X[:, 0], X[:, 1], X[:, 2]
     i, o = do[1:-1] - do[:-2], do[1:-1] - do[2:]
     rev = (np.abs(i) > SPIKE_MG_L) & (np.abs(o) > SPIKE_MG_L) & (i * o > 0)
@@ -31,14 +32,14 @@ def do_spikes(X):
 
 
 def runs(mask):
-    """Vi tri bat dau va do dai cac doan True lien tiep."""
+    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp trong mảng boolean."""
     d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
     s = np.flatnonzero(d == 1)
     return s, np.flatnonzero(d == -1) - s
 
 
 def clean(X, is_train):
-    """Tra ve (gia tri da lam sach, co); NaN la trong."""
+    """Làm sạch một tập (mảng n x 6, NaN là trống) theo ba bước ở đầu file; trả về (giá trị, cờ)."""
     X = X.copy()
     flag = np.where(np.isnan(X), INTERP, OBSERVED).astype(np.int8)
     for j, c in enumerate(FEATURES):
@@ -59,6 +60,7 @@ def clean(X, is_train):
 
 
 def main():
+    """Ghi ba file base_splits/; ô cờ 0 chép nguyên chuỗi nguồn, ô cờ 1, 2 làm tròn 4 chữ số, ô cờ 3 ghi NA."""
     os.makedirs(BASE, exist_ok=True)
     for name in NAMES:
         rows = read_raw_split(name)
@@ -73,7 +75,7 @@ def main():
                         for j in range(len(FEATURES))]
                 w.writerow([t] + vals + [int(x) for x in fl])
         cnt = {k: int((flag == k).sum()) for k in (INTERP, REJECTED, LONG_GAP)}
-        print(f"{name}: {len(rows)} dong | noi suy {cnt[INTERP]} | loai roi dien {cnt[REJECTED]} | trong dai {cnt[LONG_GAP]}")
+        print(f"{name}: {len(rows)} dòng | nội suy {cnt[INTERP]} | loại rồi điền {cnt[REJECTED]} | trống dài {cnt[LONG_GAP]}")
 
 
 if __name__ == "__main__":

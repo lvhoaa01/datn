@@ -23,10 +23,18 @@ Mục đích sử dụng: dự báo nồng độ oxy hòa tan (DO) cho nhiều g
 | base_splits/train.csv, val.csv, test.csv | Ba tập con theo thời gian (mục 5) đã làm sạch, kèm cờ cho từng ô; dùng cho thí nghiệm với dữ liệu gốc |
 | base_domain_splits/, base_semantic_splits/ | Sẽ có: base_splits cộng đặc trưng miền, cộng đặc trưng ngữ nghĩa; cùng dòng và cùng ranh giới với base_splits |
 | metadata/ | Metadata gốc của gói dữ liệu EDI edi.1177.9 và thông tin 15 trạm CEMP |
-| scripts/ | common.py (hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ), build_base.py (tạo base_splits/), verify.py (kiểm chứng) |
-| analysis/ | Thống kê mô tả (describe.py), mức sai số tham chiếu (baselines.py) và các phân tích làm căn cứ cho quy trình làm sạch; kết quả trong analysis/results/ |
 | LAM_SACH.md | Quy trình làm sạch dữ liệu |
-| manifest_sha256.json | Mã băm SHA-256 và kích thước các file, dùng để kiểm tra file không bị thay đổi |
+| manifest_sha256.json | Mã băm SHA-256 và kích thước các file của dataset, mã nguồn và kết quả phân tích, dùng để kiểm tra file không bị thay đổi |
+
+Mã nguồn và kết quả phân tích nằm ngoài thư mục dataset, ở gốc repo:
+
+| Đường dẫn | Nội dung |
+|---|---|
+| scripts/common.py | Hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ |
+| scripts/build_base_splits.py, scripts/verify_dataset.py | Tạo base_splits/ từ raw/; kiểm chứng dataset (mục 6) |
+| scripts/describe_dataset.py, scripts/baselines.py | Thống kê mô tả (mục 4); mức sai số tham chiếu (mục 5.3) |
+| scripts/cleaning_study.py, scripts/imputation_benchmark.py, scripts/gap_threshold_study.py, scripts/gap_histogram_figure.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md) |
+| artifacts/dataset/ | Kết quả của các script trên: bảng thống kê và hình |
 
 ## 3. Định dạng dữ liệu
 
@@ -70,7 +78,7 @@ Thống kê ở mục 4 tính trên dữ liệu trước làm sạch.
 | turbidity_fnu | 0.36 | 6.15 | 6.28 | 0.36 | 1.27 | 4.31 | 33.08 | 103.9 |
 | chl_fluor_ug_l | 0.31 | 3.02 | 1.76 | 0.31 | 0.79 | 2.64 | 9.33 | 29.62 |
 
-P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% số giá trị lớn hơn P99. Thống kê theo từng tập nằm trong analysis/results/feature_stats.csv.
+P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% số giá trị lớn hơn P99. Thống kê theo từng tập nằm trong artifacts/dataset/feature_stats.csv.
 
 - DO thường thấp hơn mức bão hòa một chút. Độ bão hòa tính từ DO, nhiệt độ và độ mặn có trung vị 85.6% (P01 là 65.4%, P99 là 109.8%), phù hợp với kênh tàu sâu có nhu cầu tiêu thụ oxy cao.
 - Nhiệt độ là yếu tố chính quyết định DO: nước càng ấm, oxy hòa tan càng ít (hệ số tương quan âm 0.73). pH biến đổi cùng chiều DO (tương quan 0.56), vì tảo quang hợp vừa sinh oxy vừa tiêu thụ CO2 làm pH tăng.
@@ -97,7 +105,7 @@ Khoảng trống dài nhất trong train là 7.75 giờ (độ đục, tháng 8 
 
 ### 4.4. Theo mùa
 
-Độ khó trong bảng là sai số RMSE (mg/L) của cách dự báo đơn giản nhất: lấy DO hiện tại làm dự báo cho 6 giờ sau. Sai số càng lớn thì DO thay đổi càng nhiều trong 6 giờ, càng khó dự báo. Số liệu gộp 2019 đến 2025; chi tiết theo tháng trong analysis/results/monthly_dynamics.csv.
+Độ khó trong bảng là sai số RMSE (mg/L) của cách dự báo đơn giản nhất: lấy DO hiện tại làm dự báo cho 6 giờ sau. Sai số càng lớn thì DO thay đổi càng nhiều trong 6 giờ, càng khó dự báo. Số liệu gộp 2019 đến 2025; chi tiết theo tháng trong artifacts/dataset/monthly_dynamics.csv.
 
 | Giai đoạn | Tháng | DO trung bình (mg/L) | Chênh lệch trong ngày (mg/L) | Nhiệt độ (độ C) | Độ khó 6 giờ | Số đợt DO dưới 6 |
 |---|---|---|---|---|---|---|
@@ -201,7 +209,7 @@ Giữ nguyên chỉ đúng ở các bước đầu: buổi chiều tảo quang h
 - RMSE: căn bậc hai của trung bình bình phương độ lệch, mg/L; nặng hơn MAE với các lần sai lớn;
 - R2: 1 trừ tỉ số giữa tổng bình phương sai số và tổng bình phương độ lệch của DO thật quanh trung bình của tập; bằng 1 khi dự báo đúng hoàn toàn.
 
-**Kết quả** (train và chi tiết ở analysis/results/baselines.csv):
+**Kết quả** (train và chi tiết ở artifacts/dataset/baselines.csv):
 
 | Cấu hình | Cách | Val: MAE | Val: RMSE | Val: R2 | Test: MAE | Test: RMSE | Test: R2 |
 |---|---|---|---|---|---|---|---|
@@ -224,7 +232,7 @@ Giữ nguyên chỉ đúng ở các bước đầu: buổi chiều tảo quang h
 
 ## 6. Kiểm chứng và tái lập
 
-scripts/verify.py kiểm tra:
+scripts/verify_dataset.py kiểm tra:
 - mã SHA-256 của từng file khớp manifest_sha256.json;
 - file nguồn đủ 631835 dòng (khớp metadata gốc), các dòng cách đều 15 phút;
 - mỗi tập trong base_splits/ đúng khoảng thời gian, đúng số dòng, không thiếu dòng; ba tập nối tiếp nhau, không chồng lấn;
@@ -233,11 +241,13 @@ scripts/verify.py kiểm tra:
 
 Kết quả ngày 2026-11-14: đạt toàn bộ. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
 
+Môi trường Python khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo:
+
 ```
-python scripts/build_base.py       # tao lai base_splits/ tu raw/, can numpy
-python scripts/verify.py           # kiem chung; them --write de ghi lai manifest
-python analysis/describe.py        # thong ke muc 4, ghi vao analysis/results/, can pandas va numpy
-python analysis/baselines.py       # muc sai so tham chieu muc 5.3, can pandas va numpy
+uv run python scripts/build_base_splits.py     # tạo lại dataset/base_splits/ từ dataset/raw/
+uv run python scripts/verify_dataset.py        # kiểm chứng; thêm --write để ghi lại manifest
+uv run python scripts/describe_dataset.py      # thống kê mục 4, ghi vào artifacts/dataset/
+uv run python scripts/baselines.py             # mức sai số tham chiếu mục 5.3
 ```
 
 ## 7. Nguồn và trích dẫn

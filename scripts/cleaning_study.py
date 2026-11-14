@@ -1,33 +1,31 @@
-"""Can cu cho buoc 1 va 2 cua quy trinh lam sach (LAM_SACH.md, muc 3 va 4); can pandas, numpy.
+"""Căn cứ cho bước 1 và 2 của quy trình làm sạch (dataset/LAM_SACH.md, mục 3 và 4).
 
-Ghi vao analysis/results/:
-  cleaning_summary_train.csv: so gia tri ngoai mien (ca ba tap), phan vi buoc thay doi 15 phut va
-    doan gia tri khong doi tren train, theo bien.
-  do_reversal_points.csv: diem DO dao chieu don le (vao va ra qua 0.8 mg/L, nguoc dau) va phan loai:
-    tu_nhien_khoi_nuoc (nhiet do doi tu 0.3 do C hoac pH doi tu 0.05 cung moc, giu nguyen),
-    loi_thiet_bi (cam bien khac NA trong vong 1 gio), chua_ro. Hai loai sau bi thay, chi trong train.
-Chay tu thu muc dataset: python analysis/cleaning_study.py
+Ghi vào artifacts/dataset/:
+  cleaning_summary_train.csv: số giá trị ngoài miền (cả ba tập), phân vị bước thay đổi 15 phút và
+    đoạn giá trị không đổi trên train, theo biến.
+  do_reversal_points.csv: điểm DO đảo chiều đơn lẻ (vào và ra quá 0.8 mg/L, ngược dấu) và phân loại:
+    tu_nhien_khoi_nuoc (nhiệt độ đổi từ 0.3 độ C hoặc pH đổi từ 0.05 cùng mốc, giữ nguyên),
+    loi_thiet_bi (cảm biến khác NA trong vòng 1 giờ), chua_ro. Hai loại sau bị thay, chỉ trong train.
+Chạy từ gốc repo: uv run python scripts/cleaning_study.py
 """
 import os
-import sys
 
 import numpy as np
 import pandas as pd
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from common import FEATURES as F, NAMES, RANGES, load_raw_split  # noqa: E402
+from common import FEATURES as F, NAMES, RANGES, STATS as OUT, load_raw_split
 
-OUT = os.path.join(ROOT, "analysis", "results")
 
 
 def runs(mask):
+    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp."""
     d = np.diff(np.concatenate([[0], np.asarray(mask, np.int8), [0]]))
     s = np.flatnonzero(d == 1)
     return s, np.flatnonzero(d == -1) - s
 
 
 def summary(S):
+    """Bảng cleaning_summary_train: số giá trị ngoài miền RANGES, phân vị 99 và 99.9 của bước 15 phút, đoạn không đổi dài nhất."""
     d = S["train"]
     rows = []
     for c in F:
@@ -41,6 +39,7 @@ def summary(S):
 
 
 def reversals(S):
+    """Bảng do_reversal_points: mọi điểm DO đảo chiều đơn lẻ trong ba tập, kèm phân loại."""
     rows = []
     others = [c for c in F if c != "do_mg_l"]
     for n in NAMES:
@@ -60,6 +59,7 @@ def reversals(S):
 
 
 def main():
+    """Ghi hai bảng căn cứ."""
     os.makedirs(OUT, exist_ok=True)
     S = {n: load_raw_split(n).set_index("datetime_pst") for n in NAMES}
     summary(S).to_csv(os.path.join(OUT, "cleaning_summary_train.csv"), index=False)

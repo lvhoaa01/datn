@@ -1,28 +1,26 @@
-"""Thong ke mo ta ba tap train, val, test truoc lam sach, dung cho README.md muc 4 (can pandas, numpy).
+"""Thống kê mô tả ba tập train, val, test trước làm sạch, dùng cho dataset/README.md mục 4.
 
-Ghi vao analysis/results/: feature_stats (tung bien), gap_stats (khoang trong theo dong), long_gaps (khoang trong
-dai hon 8 gio, theo bien), do_dynamics (DO theo tap), monthly_dynamics, split_by_regime (theo thang, theo mua).
-Chay tu thu muc dataset: python analysis/describe.py
+Ghi vào artifacts/dataset/: feature_stats (từng biến), gap_stats (khoảng trống theo dòng), long_gaps (khoảng trống
+dài hơn 8 giờ, theo biến), do_dynamics (DO theo tập), monthly_dynamics, split_by_regime (theo tháng, theo mùa).
+Chạy từ gốc repo: uv run python scripts/describe_dataset.py
 """
 import os
-import sys
 import numpy as np
 import pandas as pd
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "scripts"))
-from common import FEATURES as F, MAX_GAP, load_raw_split  # noqa: E402
+from common import FEATURES as F, MAX_GAP, STATS as OUT, load_raw_split
 
-OUT = os.path.join(ROOT, "analysis", "results")
-STEP_H = 0.25
+STEP_H = 0.25             # một mốc = 0.25 giờ
 
 
 def load(name):
+    """Tập chưa làm sạch, chỉ số là datetime_pst."""
     d = load_raw_split(name)
     return d.set_index("datetime_pst")
 
 
 def runs(mask):
+    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp."""
     m = np.asarray(mask, bool)
     d = np.diff(np.concatenate([[0], m.astype(np.int8), [0]]))
     s, e = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
@@ -30,6 +28,7 @@ def runs(mask):
 
 
 def episodes(below, min_h=1.0, merge_h=1.0):
+    """Số đợt DO thấp: gộp hai đoạn dưới ngưỡng cách nhau không quá merge_h giờ, rồi đếm đoạn dài ít nhất min_h giờ."""
     b = np.asarray(below, bool).copy()
     st, ln = runs(~b)
     for a, l in zip(st, ln):
@@ -40,6 +39,10 @@ def episodes(below, min_h=1.0, merge_h=1.0):
 
 
 def do_sat(t, spc):
+    """DO bão hòa (mg/L) theo nhiệt độ t (độ C) và độ dẫn spc (uS/cm).
+
+    Công thức Benson và Krause (1984) theo APHA, áp suất 1 atm; độ mặn PSS-78 tính gần đúng từ độ dẫn ở 25 độ C.
+    """
     T = t + 273.15
     R = np.clip(spc, 0, None) / 53087.0
     sal = 0.0120 - 0.2174 * R**0.5 + 25.3283 * R + 13.7714 * R**1.5 - 6.4788 * R**2 + 2.5842 * R**2.5
@@ -49,15 +52,17 @@ def do_sat(t, spc):
 
 
 def season(m):
+    """Giai đoạn mùa của tháng m (README mục 4.4): lanh, xuan, nong, thu."""
     return {11: "lanh", 12: "lanh", 1: "lanh", 2: "lanh", 3: "lanh", 4: "xuan", 5: "xuan",
             6: "nong", 7: "nong", 8: "nong", 9: "nong", 10: "thu"}[m]
 
 
 def main():
+    """Tính và ghi sáu bảng thống kê."""
     os.makedirs(OUT, exist_ok=True)
     S = {n: load(n) for n in ["train", "val", "test"]}
     S["all"] = pd.concat([S["train"], S["val"], S["test"]])
-    # 1. thong ke tung bien
+    # 1. thống kê từng biến
     rows = []
     for n, d in S.items():
         for c in F:
@@ -68,7 +73,7 @@ def main():
                              min=q[0], p01=q[1], p05=q[2], p25=q[3], median=q[4], p75=q[5], p95=q[6], p99=q[7], max=q[8]))
     fs = pd.DataFrame(rows).round(3)
     fs.to_csv(os.path.join(OUT, "feature_stats.csv"), index=False)
-    # 2. cau truc khuyet
+    # 2. cấu trúc dữ liệu khuyết
     rows = []
     for n, d in S.items():
         allna = d[F].isna().any(axis=1).to_numpy()
@@ -83,7 +88,7 @@ def main():
         rows.append(r)
     gs = pd.DataFrame(rows)
     gs.to_csv(os.path.join(OUT, "gap_stats.csv"), index=False)
-    # khoang trong dai hon 8 gio theo bien: dung cac o co 3 trong base_splits
+    # khoảng trống trong nguồn dài hơn MAX_GAP mốc, theo từng biến
     long = []
     for n in ["train", "val", "test"]:
         d = S[n]
@@ -93,7 +98,7 @@ def main():
                 if l > MAX_GAP:
                     long.append(dict(split=n, feature=c, start=str(d.index[a]), hours=l * STEP_H))
     pd.DataFrame(long).to_csv(os.path.join(OUT, "long_gaps.csv"), index=False)
-    # 3. DO: dao dong ngay, bao hoa, dot DO thap, tuong quan
+    # 3. DO: dao động ngày, độ bão hòa, đợt DO thấp, tương quan với các biến khác
     full = S["all"]
     rows = []
     for n, d in S.items():
@@ -111,7 +116,7 @@ def main():
         rows.append(r)
     dyn = pd.DataFrame(rows).round(3)
     dyn.to_csv(os.path.join(OUT, "do_dynamics.csv"), index=False)
-    # 4. theo thang va theo che do mua
+    # 4. theo tháng và theo giai đoạn mùa; độ khó là RMSE của cách giữ nguyên ở tầm 6 giờ (24 mốc)
     rows = []
     do = full["do_mg_l"]
     day = do.resample("D"); dr = (day.max() - day.min())[day.count() >= 86]

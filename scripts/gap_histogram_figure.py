@@ -1,6 +1,6 @@
-"""Ve bieu do tan suat do dai khoang trong (can pandas, matplotlib).
-Chay tu thu muc dataset, sau analysis/threshold_study.py: python analysis/gap_histogram_figure.py
-Doc analysis/results/gap_length_histogram.csv, ghi analysis/results/gap_length_histogram.png.
+"""Vẽ biểu đồ tần suất độ dài khoảng trống (dataset/LAM_SACH.md mục 5.2).
+Chạy từ gốc repo, sau scripts/gap_threshold_study.py: uv run python scripts/gap_histogram_figure.py
+Đọc artifacts/dataset/gap_length_histogram.csv, ghi artifacts/dataset/gap_length_histogram.png.
 """
 import os
 
@@ -9,14 +9,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RES = os.path.join(ROOT, "analysis", "results")
+from common import STATS as RES  # noqa: E402
+
+# màu chữ chính, chữ phụ, nền, cột
 INK, INK2, SURF, BAR = "#0b0b0b", "#52514e", "#fcfcfb", "#2a78d6"
 LABELS = ["15 phút", "30 phút\nđến 1 giờ", "1 đến 2\ngiờ", "2 đến 4\ngiờ", "4 đến 8\ngiờ",
           "8 đến 16\ngiờ", "16 đến 24\ngiờ", "24 đến 48\ngiờ", "trên 48\ngiờ"]
 
 
 def main():
+    """Vẽ cột theo thang log, đường ngưỡng 8 giờ và chú thích, lưu PNG."""
     h = pd.read_csv(os.path.join(RES, "gap_length_histogram.csv"))
     fig, ax = plt.subplots(figsize=(9, 4.2), dpi=150)
     fig.patch.set_facecolor(SURF)
