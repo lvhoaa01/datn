@@ -1,60 +1,69 @@
-"""Nghien cuu lam sach va phan phoi tren tap train (can pandas, numpy, scipy).
+"""Can cu cho buoc 1 va 2 cua quy trinh lam sach (LAM_SACH.md, muc 3 va 4); can pandas, numpy.
+
+Ghi vao analysis/results/:
+  cleaning_summary_train.csv: so gia tri ngoai mien (ca ba tap), phan vi buoc thay doi 15 phut va
+    doan gia tri khong doi tren train, theo bien.
+  do_reversal_points.csv: diem DO dao chieu don le (vao va ra qua 0.8 mg/L, nguoc dau) va phan loai:
+    tu_nhien_khoi_nuoc (nhiet do doi tu 0.3 do C hoac pH doi tu 0.05 cung moc, giu nguyen),
+    loi_thiet_bi (cam bien khac NA trong vong 1 gio), chua_ro. Hai loai sau bi thay, chi trong train.
 Chay tu thu muc dataset: python analysis/cleaning_study.py
 """
 import os
+import sys
+
 import numpy as np
 import pandas as pd
-from scipy.stats import skew
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from common import FEATURES as F, NAMES, RANGES, load_raw_split  # noqa: E402
+
 OUT = os.path.join(ROOT, "analysis", "results")
-F = ["do_mg_l", "water_temp_c", "ph", "spc_us_cm", "turbidity_fnu", "chl_fluor_ug_l"]
-# mien vat ly hop ly cho song ngot (gioi han rong, chi bat loi ro rang)
-BOUNDS = {"do_mg_l": (0, 20), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
-          "turbidity_fnu": (0, 1000), "chl_fluor_ug_l": (0, 200)}
-# nguong tuyet doi toi thieu cho spike (don vi cua bien)
-FLOOR = {"do_mg_l": 1.0, "water_temp_c": 1.5, "ph": 0.3, "spc_us_cm": 100, "turbidity_fnu": 10, "chl_fluor_ug_l": 3}
 
 
 def runs(mask):
-    m = np.asarray(mask, bool)
-    d = np.diff(np.concatenate([[0], m.astype(np.int8), [0]]))
-    s, e = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
-    return s, e - s
+    d = np.diff(np.concatenate([[0], np.asarray(mask, np.int8), [0]]))
+    s = np.flatnonzero(d == 1)
+    return s, np.flatnonzero(d == -1) - s
 
 
-def hampel_reversal(s, floor, k=6, w=25):
-    med = s.rolling(w, center=True, min_periods=w // 2).median()
-    mad = (s - med).abs().rolling(w, center=True, min_periods=w // 2).median()
-    thr = np.maximum(floor, k * 1.4826 * mad)
-    rev = (s - s.shift(1)) * (s - s.shift(-1)) > 0
-    return ((s - med).abs() > thr) & rev
+def summary(S):
+    d = S["train"]
+    rows = []
+    for c in F:
+        lo, hi = RANGES[c]
+        oob = sum(int(((S[n][c] < lo) | (S[n][c] > hi)).sum()) for n in NAMES)
+        step = d[c].diff().abs()
+        flat_h = (runs((d[c].diff() == 0).to_numpy())[1] + 1) * 0.25
+        rows.append(dict(feature=c, out_of_bounds_all=oob, step_p99=step.quantile(.99), step_p999=step.quantile(.999),
+                         step_max=step.max(), longest_flat_h=float(flat_h.max()), flat_runs_ge_6h=int((flat_h >= 6).sum())))
+    return pd.DataFrame(rows).round(3)
+
+
+def reversals(S):
+    rows = []
+    others = [c for c in F if c != "do_mg_l"]
+    for n in NAMES:
+        x = S[n]
+        s = x.do_mg_l
+        i, o = s - s.shift(1), s - s.shift(-1)
+        rev = (i.abs() > 0.8) & (o.abs() > 0.8) & (i * o > 0)
+        dT = (x.water_temp_c - x.water_temp_c.shift(1)).abs()
+        dP = (x.ph - x.ph.shift(1)).abs()
+        comove = (dT >= 0.3) | (dP >= 0.05 + 1e-9)
+        na_near = x[others].isna().any(axis=1).astype(int).rolling(9, center=True, min_periods=1).max() > 0
+        for t in s.index[rev]:
+            cls = "tu_nhien_khoi_nuoc" if comove[t] else ("loi_thiet_bi" if na_near[t] else "chua_ro")
+            rows.append(dict(split=n, time=str(t), prev=s.shift(1)[t], value=s[t], next=s.shift(-1)[t],
+                             dT=dT[t], dpH=dP[t], other_sensor_na_1h=bool(na_near[t]), classification=cls))
+    return pd.DataFrame(rows)
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    d = pd.read_csv(os.path.join(ROOT, "splits", "train.csv"), na_values=["NA"], parse_dates=["datetime_pst"]).set_index("datetime_pst")
-    rows, spikes = [], []
-    for c in F:
-        s = d[c]
-        v = s.dropna()
-        lo, hi = BOUNDS[c]
-        sp = hampel_reversal(s, FLOOR[c])
-        same = (s.diff() == 0).to_numpy()
-        st, ln = runs(same)
-        flat_h = (ln + 1) * 0.25
-        dif = s.diff().abs()
-        r = dict(feature=c, out_of_bounds=int(((v < lo) | (v > hi)).sum()), spikes_isolated=int(sp.sum()),
-                 spikes_per_10k=round(sp.sum() / len(v) * 1e4, 2), longest_flat_h=float(flat_h.max()) if len(ln) else 0,
-                 flat_runs_ge_6h=int((flat_h >= 6).sum()), step_p999=dif.quantile(.999), step_max=dif.max(),
-                 skew_raw=skew(v), skew_log1p=skew(np.log1p(v)) if v.min() > -1 else np.nan)
-        rows.append(r)
-        for t in s.index[sp]:
-            i = d.index.get_loc(t)
-            spikes.append(dict(feature=c, time=str(t), prev=s.iloc[i - 1], value=s.iloc[i], next=s.iloc[i + 1],
-                               temp=d.water_temp_c.iloc[i], ph=d.ph.iloc[i]))
-    pd.DataFrame(rows).round(3).to_csv(os.path.join(OUT, "cleaning_summary_train.csv"), index=False)
-    pd.DataFrame(spikes).to_csv(os.path.join(OUT, "spike_candidates_train.csv"), index=False)
+    S = {n: load_raw_split(n).set_index("datetime_pst") for n in NAMES}
+    summary(S).to_csv(os.path.join(OUT, "cleaning_summary_train.csv"), index=False)
+    reversals(S).to_csv(os.path.join(OUT, "do_reversal_points.csv"), index=False)
     print("done")
 
 

@@ -4,7 +4,7 @@ Chay tu thu muc dataset:  python analysis/imputation_benchmark.py [--no-saits]
 Can: pandas, numpy, scipy, scikit-learn. SAITS can them torch va pypots (tu bo qua neu thieu).
 
 Cach lam (xoa nhan tao roi dien lai):
-1. Doan cham: 15% cuoi cua train (2023-07 den 2024-05). 85% dau chi dung de huan luyen SAITS.
+1. Doan cham: 15% cuoi cua train (2023-08-09 den 2024-05-31). 85% dau chi dung de huan luyen SAITS.
 2. Voi moi do dai khoang trong L, chon ngau nhien cac vi tri a sao cho tu a-200 den a+L+150 moc
    deu co du 6 bien (de biet gia tri that va du ngu canh). Cac khoang trong cung do dai khong chong nhau.
 3. Xoa [a, a+L) theo hai kieu: A = ca 6 bien cung trong (giong thuc te khi DO trong);
@@ -18,6 +18,7 @@ Cac phuong phap mot bien (1-6) cho ket qua nhu nhau o kieu A va B vi chi dung ch
 """
 import argparse
 import os
+import sys
 import time
 
 import numpy as np
@@ -25,6 +26,8 @@ import pandas as pd
 from scipy.interpolate import PchipInterpolator
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from common import load_raw_split  # noqa: E402
 OUT = os.path.join(ROOT, "analysis", "results")
 F = ["do_mg_l", "water_temp_c", "ph", "spc_us_cm", "turbidity_fnu", "chl_fluor_ug_l"]
 LENS = [1, 2, 4, 8, 12, 24, 48, 85, 98]          # so moc 15 phut; 85 va 98 = do dai hai lan bao tri that
@@ -146,7 +149,7 @@ def main():
     ap.add_argument("--no-saits", action="store_true")
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
-    d = pd.read_csv(os.path.join(ROOT, "splits", "train.csv"), na_values=["NA"], parse_dates=["datetime_pst"])
+    d = load_raw_split("train")
     X, times = d[F].to_numpy(float), d["datetime_pst"]
     n = len(X)
     cut = int(n * (1 - EVAL_FRAC))

@@ -19,6 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from imputation_benchmark import F, fill_simple  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from common import load_raw_split  # noqa: E402
 OUT = os.path.join(ROOT, "analysis", "results")
 NAMES = ["train", "val", "test"]
 LENS_H = [3, 4, 5, 6, 7, 8, 9, 10, 12, 16]
@@ -69,7 +71,7 @@ def part1(X):
 
 
 def part2():
-    S = [pd.read_csv(os.path.join(ROOT, "splits", f"{n}.csv"), na_values=["NA"]) for n in NAMES]
+    S = [load_raw_split(n) for n in NAMES]
     X = pd.concat(S, ignore_index=True)[F].to_numpy(float)
     n_all = len(X)
     offs = np.cumsum([0] + [len(s) for s in S])
@@ -97,7 +99,7 @@ def part2():
 def histogram():
     L = []
     for nm in NAMES:
-        X = pd.read_csv(os.path.join(ROOT, "splits", f"{nm}.csv"), na_values=["NA"])[F].to_numpy(float)
+        X = load_raw_split(nm)[F].to_numpy(float)
         for j in range(6):
             L += list(runs(np.isnan(X[:, j]))[1])
     h = np.array(L) / 4
@@ -114,7 +116,7 @@ def histogram():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    d = pd.read_csv(os.path.join(ROOT, "splits", "train.csv"), na_values=["NA"])
+    d = load_raw_split("train")
     histogram().to_csv(os.path.join(OUT, "gap_length_histogram.csv"), index=False)
     p1 = part1(d[F].to_numpy(float))
     p1.round(4).to_csv(os.path.join(OUT, "threshold_crossover.csv"), index=False)

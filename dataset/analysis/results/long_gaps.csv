@@ -1,7 +1,4 @@
 split,feature,start,hours
-train,turbidity_fnu,2019-08-16 14:15:00,7.75
-train,turbidity_fnu,2019-08-18 02:15:00,7.75
-train,turbidity_fnu,2019-08-19 03:15:00,7.25
 val,do_mg_l,2024-09-02 14:00:00,21.25
 val,water_temp_c,2024-09-02 14:00:00,21.25
 val,ph,2024-09-02 14:00:00,21.25

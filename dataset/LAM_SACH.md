@@ -1,8 +1,8 @@
 # Quy trình làm sạch dữ liệu dataset CEMP RRI
 
-Phiên bản ngày 2026-11-13. Trạng thái: quy trình đã chốt, mã xử lý chưa được cài đặt.
+Phiên bản ngày 2026-11-14. Trạng thái: quy trình đã chốt và đã cài đặt trong scripts/build_base.py; kết quả nằm trong base_splits/.
 
-Tài liệu mô tả cách làm sạch ba tập train, val, test trong thư mục splits/ (xem README.md) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình gồm ba bước: kiểm tra miền giá trị, sửa điểm DO bất thường và xử lý khoảng trống. Mã phân tích làm căn cứ nằm trong analysis/, kết quả trong analysis/results/.
+Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở README.md, mục 5) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình gồm ba bước: kiểm tra miền giá trị, sửa điểm DO bất thường và xử lý khoảng trống. Mã phân tích làm căn cứ nằm trong analysis/, kết quả trong analysis/results/.
 
 ## 1. Khái niệm
 
@@ -22,15 +22,15 @@ Mô hình không nhận ô trống: ô trống trong đầu vào phải được
 
 ## 2. Nguyên tắc
 
-1. Không sửa raw/ và splits/. Dữ liệu sau làm sạch là file mới; mọi giá trị bị thay hoặc được điền đều có cờ đánh dấu.
+1. Không sửa raw/. Dữ liệu sau làm sạch được ghi vào base_splits/; mọi giá trị bị thay hoặc được điền đều có cờ đánh dấu (mục 6).
 2. Mọi ngưỡng và lựa chọn phương pháp được rút ra từ train.
 3. Mỗi tập được xử lý riêng, không dùng giá trị của tập khác để điền.
-4. Sai số luôn được tính trên DO đo thực tế. Giá trị điền chỉ dùng làm đầu vào; mốc nhãn có DO được điền không được tính sai số (mục 6.3).
-5. Phạm vi chỉ là làm sạch sáu biến quan trắc. Biến đổi thang, chuẩn hóa, tạo cửa sổ và tạo đặc trưng thuộc các giai đoạn sau; mục 7 chỉ ghi kết quả phân tích để tham khảo.
+4. Sai số luôn được tính trên DO đo thực tế. Giá trị điền chỉ dùng làm đầu vào; mốc nhãn có DO được điền hoặc bị thay không được tính sai số (mục 6.3).
+5. Phạm vi chỉ là làm sạch sáu biến quan trắc. Biến đổi thang, chuẩn hóa và tạo đặc trưng thuộc các giai đoạn sau. Quy tắc tạo cửa sổ ở README.md, mục 5.2.
 
 ## 3. Bước 1: Kiểm tra miền giá trị
 
-Giá trị nằm ngoài miền vật lý được coi là lỗi (sai đơn vị, cảm biến ở ngoài nước, mã lỗi của thiết bị). Giá trị lỗi được chuyển thành ô trống và xử lý như mọi ô trống khác (mục 5).
+Giá trị nằm ngoài miền vật lý được coi là lỗi (sai đơn vị, cảm biến ở ngoài nước, mã lỗi của thiết bị). Giá trị lỗi bị loại, được đánh cờ 2 và điền như một ô trống (mục 5): nội suy nếu đoạn lỗi cùng các ô trống liền kề không quá 8 giờ, để trống nếu dài hơn.
 
 | Biến | Miền chấp nhận |
 |---|---|
@@ -70,7 +70,7 @@ Train có 21 điểm nghi vấn, trong đó 17 điểm thuộc loại 1. Val có
 | 2021-09-08 22:15 | 8.71, 9.97, 8.84 | DO tăng ban đêm mà nhiệt độ và pH không đổi, phù hợp tác động của trạm sục khí gần đó | Chưa rõ | 8.775 |
 | 2021-10-28 17:30 | 7.62, 8.63, 7.34 | Tương tự; tháng 10 là giai đoạn trạm sục khí thường vận hành | Chưa rõ | 7.480 |
 
-Giá trị thay là trung bình của mốc trước và mốc sau. Ở cả bốn điểm, hai mốc lân cận chỉ chênh nhau 0.09 đến 0.28 mg/L. Với hai điểm chưa rõ nguyên nhân, mức DO trước và sau điểm vẫn được giữ; chỉ riêng mốc vọt lên bị thay, vì không biến nào trong dataset giải thích được mốc đó.
+Giá trị thay là trung bình của mốc trước và mốc sau, tức nội suy tuyến tính qua một mốc như ở mục 5. Ở cả bốn điểm, hai mốc lân cận chỉ chênh nhau 0.09 đến 0.28 mg/L. Với hai điểm chưa rõ nguyên nhân, mức DO trước và sau điểm vẫn được giữ; chỉ riêng mốc vọt lên bị thay, vì không biến nào trong dataset giải thích được mốc đó.
 
 ### 4.4. Các hiện tượng được giữ nguyên
 
@@ -87,15 +87,16 @@ Giá trị thay là trung bình của mốc trước và mốc sau. Ở cả b�
 |---|---|
 | Không quá 8 giờ (32 mốc) | Nội suy tuyến tính: nối thẳng giữa số đo ngay trước và số đo ngay sau khoảng trống |
 | Dài hơn 8 giờ, ở bất kỳ biến nào | Không điền. Mọi cửa sổ có đầu vào hoặc nhãn chạm vào khoảng trống này bị bỏ |
+| Nằm ở đầu hoặc cuối tập (thiếu số đo ở một đầu) | Xử lý như khoảng trống dài, vì không lấy số đo của tập khác để nội suy. RRI không có trường hợp này |
 
 Quy tắc áp dụng như nhau cho sáu biến và ba tập. Ví dụ khoảng trống ngắn, DO ngày 2019-07-15:
 
 | Mốc | DO đo được (mg/L) | Sau làm sạch | Cờ |
 |---|---|---|---|
-| 09:45 | 7.10 | 7.10 | Đo thật |
-| 10:00 | trống | 7.20 | Nội suy |
-| 10:15 | trống | 7.29 | Nội suy |
-| 10:30 | 7.39 | 7.39 | Đo thật |
+| 09:45 | 7.10 | 7.10 | 0 (đo thật) |
+| 10:00 | trống | 7.1967 | 1 (nội suy) |
+| 10:15 | trống | 7.2933 | 1 (nội suy) |
+| 10:30 | 7.39 | 7.39 | 0 (đo thật) |
 
 Ví dụ khoảng trống dài: lần bảo trì trong val, cả sáu biến trống từ 2024-09-02 14:00 đến 11:00 hôm sau (21.25 giờ). Với đầu vào 24 giờ và nhãn 6 giờ, mọi cửa sổ có thời điểm dự báo từ 2024-09-02 08:15 đến 2024-09-04 11:00 bị bỏ. Các mốc trống được giữ nguyên, không xóa rồi ghép hai đầu, vì như vậy mốc 13:45 ngày 2/9 sẽ đứng ngay trước mốc 11:15 ngày 3/9 như thể chỉ cách nhau 15 phút.
 
@@ -160,16 +161,29 @@ A, B, C chỉ dùng số đo trước khoảng trống. D, E, F dùng cả hai �
 | 21.25 giờ | 0.257 | 0.207 | 0.231 | 0.236 | 0.237 | **0.191** | 0.289 | 0.237 |
 | 24.5 giờ | 0.259 | **0.219** | 0.227 | 0.235 | 0.241 | 0.231 | 0.284 | 0.253 |
 
-- D chính xác nhất đến 6 giờ (E gần như trùng D). Từ 12 giờ F tốt hơn D; ở 24.5 giờ B, D, F chênh nhau không có ý nghĩa thống kê.
-- G kém nhất vì khi cả sáu biến cùng trống, nó chỉ còn giờ trong ngày và ngày trong năm để dựa vào. H không vượt D ở độ dài nào.
-- Độ liền mạch: tỷ lệ khoảng trống có bước nhảy ở hai đầu lớn hơn 0.42 mg/L (mức 99% của bước thay đổi tự nhiên) không quá 0.3% với D và E, dưới 3.5% với F, 13% đến 32% với B, 17% đến 25% với G.
-- Khi chỉ một biến trống, G tốt nhất cho pH và chlorophyll, nhưng trường hợp này hầu như không xảy ra với DO (10 trên 543 ô).
+Ngoài sai số, hai đầu khoảng trống cần liền mạch với số đo thật. Tỷ lệ khoảng trống có bước nhảy ở đầu trái hoặc đầu phải lớn hơn 0.42 mg/L (mức 99% của bước thay đổi tự nhiên, mục 4.1) là: không quá 0.3% với D và E, dưới 3.5% với F, 13% đến 32% với B, 17% đến 25% với G.
+
+**Kết luận: chọn D (nội suy tuyến tính).**
+- D chính xác nhất cho DO với khoảng trống đến 6 giờ, nhóm chứa 99.45% số khoảng trống thực tế (mục 5.2).
+- D liền mạch ở cả hai đầu, không cần huấn luyện và áp dụng như nhau cho sáu biến.
+
+Lý do không chọn các phương pháp còn lại:
+
+| Phương pháp | Lý do |
+|---|---|
+| A, B, C (chỉ dùng số đo trước khoảng trống) | Sai số cao hơn D từ 37% trở lên với khoảng trống đến 6 giờ; gãy ở đầu phải vì không dùng số đo sau khoảng trống |
+| E (PCHIP) | Gần như trùng D nhưng phức tạp hơn |
+| F (hôm qua cộng độ lệch hai đầu) | Chỉ tốt hơn D với khoảng trống từ 12 giờ, là độ dài không được điền (mục 5.4) |
+| G (MissForest) | Kém nhất, sai số gấp 2 đến 6 lần D: khi cả sáu biến cùng trống, nó chỉ còn giờ trong ngày và ngày trong năm để dựa vào. G chỉ tốt nhất khi một biến trống riêng lẻ (pH, chlorophyll), trường hợp hầu như không xảy ra với DO (10 trên 543 ô) |
+| H (SAITS) | Không vượt D ở độ dài nào, lại cần huấn luyện một mạng học sâu riêng |
 
 Kết quả đầy đủ cho sáu biến: analysis/results/imputation_benchmark.csv.
 
 ### 5.4. Chọn ngưỡng 8 giờ
 
-**Căn cứ 1: D còn là phương pháp tốt nhất cho DO đến 10 giờ.** Thử thêm trên toàn bộ train, 400 đoạn cho mỗi độ dài, so D với phương pháp tốt nhất trong các phương pháp còn lại (khoảng tin cậy 95% tính bằng lấy mẫu lại 4000 lần):
+Ngưỡng chia khoảng trống làm hai nhóm: không quá ngưỡng thì nội suy bằng D; dài hơn ngưỡng thì để trống (cờ 3), và mọi cửa sổ chạm vào bị bỏ. Ngưỡng quá cao thì phải điền cả những đoạn mà D không còn chính xác; ngưỡng quá thấp thì bỏ cửa sổ không cần thiết. Hai căn cứ dưới đây cho giới hạn trên và giới hạn dưới.
+
+**Căn cứ 1, giới hạn trên: D còn tốt nhất cho DO đến khoảng 10 giờ.** Thử lại trên toàn bộ train với 400 đoạn xóa nhân tạo cho mỗi độ dài, so D với phương pháp tốt nhất trong các phương pháp còn lại. "Ngang nhau" nghĩa là khoảng tin cậy 95% của chênh lệch sai số (lấy mẫu lại 4000 lần) chứa 0.
 
 | Độ dài | D (mg/L) | Tốt nhất còn lại (mg/L) | Kết luận |
 |---|---|---|---|
@@ -180,95 +194,82 @@ Kết quả đầy đủ cho sáu biến: analysis/results/imputation_benchmark.
 | 12 giờ | 0.183 | F: 0.168 | F tốt hơn |
 | 16 giờ | 0.201 | F: 0.171 | F tốt hơn |
 
-Với 12 khoảng trống biến phụ thực tế từ 2 đến 8 giờ (pH, độ đục, chlorophyll), D tốt nhất hoặc ngang tốt nhất.
+Từ 12 giờ, F tốt hơn D rõ rệt, nên ngưỡng không nên vượt 10 giờ. Với 12 khoảng trống thực tế từ 2 đến 8 giờ của các biến phụ (pH, độ đục, chlorophyll), D cũng tốt nhất hoặc ngang tốt nhất.
 
-**Căn cứ 2: kết quả không đổi khi ngưỡng nằm trong khoảng 7.75 đến 21 giờ.** Số cửa sổ bị bỏ theo ngưỡng (đầu vào 24 giờ, nhãn 6 giờ):
+**Căn cứ 2, giới hạn dưới: khoảng trống thực tế có một khoảng hở từ 7.75 đến 21.25 giờ.** Khoảng trống ngắn dài nhất là 7.75 giờ (độ đục, tháng 8 năm 2019); khoảng trống dài ngắn nhất là 21.25 giờ (bảo trì trong val), không có khoảng trống nào ở giữa (mục 5.2). Vì vậy mọi ngưỡng từ 7.75 đến dưới 21.25 giờ chia dữ liệu RRI thành đúng hai nhóm như nhau: 2364 khoảng trống được nội suy và 13 khoảng trống để trống, nên dữ liệu sau làm sạch giống hệt nhau. Ngưỡng thấp hơn 7.75 giờ chuyển thêm các khoảng trống 2 đến 7.75 giờ sang nhóm để trống, làm bỏ thêm cửa sổ, kể cả trong train, trong khi căn cứ 1 cho thấy D vẫn điền tốt các khoảng trống này:
 
-| Ngưỡng | train | val | test |
-|---|---|---|---|
-| 2 giờ | 1030 | 862 | 349 |
-| 4 giờ | 896 | 862 | 217 |
-| 6 giờ | 392 | 720 | 217 |
-| Từ 7.75 đến 21 giờ | 0 | 720 | 217 |
-
-Ngưỡng 8 giờ nằm trong khoảng ổn định này và trong vùng D còn tốt nhất cho DO.
-
-### 5.5. Kết quả
-
-Ô được nội suy: train 2457 (0.22% số ô), val 305 (0.19%), test 171 (0.11%). Ô để trống: val 907, test 588.
-
-Số cửa sổ bị bỏ trên số cửa sổ có thể tạo, và số đợt DO dưới 6 mg/L bị mất khỏi đánh giá (train có 152 đợt, val 68, test 100):
-
-| Cấu hình | train | val | test | Đợt DO dưới 6 bị mất |
+| Ngưỡng | Số khoảng trống để trống | Cửa sổ bị bỏ: train | val | test |
 |---|---|---|---|---|
-| Đầu vào 24 giờ, dự báo 6 giờ | 0 trên 189769 | 720 trên 26185 (2.75%) | 217 trên 26377 (0.82%) | val 2, test 0 |
-| Đầu vào 7 ngày, dự báo 24 giờ | 0 trên 189121 | 2016 trên 26113 (7.72%) | 865 trên 26305 (3.29%) | val 2, test 6 |
+| 2 giờ | 25 | 1030 | 862 | 349 |
+| 4 giờ | 22 | 896 | 862 | 217 |
+| 6 giờ | 16 | 392 | 720 | 217 |
+| Từ 7.75 đến 21 giờ | 13 | 0 | 720 | 217 |
 
-Đợt DO thấp là chuỗi DO dưới ngưỡng kéo dài ít nhất 1 giờ (hai chuỗi cách nhau không quá 1 giờ được gộp). Các đợt bị mất nằm trong vài ngày nóng ngay sau hai lần bảo trì, DO thấp nhất 5.6 đến 6.0 mg/L. Không đợt DO dưới 5 mg/L nào bị mất.
+Số cửa sổ tính cho cấu hình đầu vào 24 giờ, dự báo 6 giờ; cấu hình 7 ngày, 24 giờ cho cùng kết luận (analysis/results/threshold_sensitivity.csv).
 
-**Lưu ý.** Nội suy tuyến tính dùng đầu phải của khoảng trống. Khi thời điểm dự báo rơi vào giữa một khoảng trống ngắn, đầu phải là số đo tại hoặc sau thời điểm dự báo, điều mô hình chưa biết khi chạy thực tế. Trường hợp này chiếm 0.52% cửa sổ train, 0.71% val, 0.39% test (đầu vào 24 giờ) và được chấp nhận, vì các thí nghiệm so sánh đặc trưng dùng chung dữ liệu nên chịu ảnh hưởng như nhau, và DO điền không được dùng để tính sai số.
+**Chọn 8 giờ.** Hai căn cứ cho khoảng 7.75 đến 10 giờ. 8 giờ là số tròn trong khoảng này: với RRI, kết quả giống mọi ngưỡng trong khoảng; với dữ liệu mới tải lên hệ thống web, khoảng trống dài hơn 8 giờ sẽ không bị điền ở vùng D kém chính xác.
 
-### 5.6. Các phương án khác đã xem xét
+**Hai cách xử lý khoảng trống dài khác đã xem xét:**
 
-| Phương án | Kết quả | Lý do không chọn |
+| Cách | Kết quả | Lý do không chọn |
 |---|---|---|
-| Không điền, bỏ mọi cửa sổ có ô trống | Mất 19.5%, 34.9%, 20.7% cửa sổ (train, val, test); mất 23, 13, 5 đợt DO dưới 6 | Mất nhiều dữ liệu, gồm cả giai đoạn DO thấp |
-| Chỉ điền bằng số đo trước khoảng trống (A, B, C) | Sai số cao hơn D ít nhất 37% với khoảng trống đến 6 giờ; gãy ở đầu phải | Kém chính xác và không liền mạch |
-| Điền cả khoảng trống dài bằng F | Giữ thêm khoảng 630 cửa sổ val và 120 cửa sổ test | Giá trị tự tạo kéo dài gần một ngày; ở test khoảng trống dài hơn một ngày nên mọi giờ trong ngày đều phải tự tạo |
-| MissForest (G) | Sai số gấp 2 đến 6 lần D với khoảng trống đến 6 giờ khi cả sáu biến cùng trống | Không dùng được cho kiểu trống phổ biến nhất của dataset |
-| SAITS (H) | Không vượt D ở độ dài nào; cần huấn luyện mạng học sâu riêng | Phức tạp hơn mà không chính xác hơn |
-| Ngưỡng 2 giờ | Bỏ thêm 1030 cửa sổ train, 142 val, 132 test | D vẫn tốt nhất ở các khoảng trống 2 đến 8 giờ |
+| Không điền gì, bỏ mọi cửa sổ có ô trống | Mất 19.5%, 34.9%, 20.7% cửa sổ (train, val, test) và 23, 13, 5 đợt DO dưới 6 mg/L | Mất nhiều dữ liệu, gồm cả các giai đoạn DO thấp cần đánh giá |
+| Điền cả khoảng trống dài bằng F | Giữ thêm khoảng 630 cửa sổ val và 120 cửa sổ test | Giá trị tự tạo kéo dài gần một ngày; ở test khoảng trống dài hơn một ngày nên mọi giờ trong ngày đều là giá trị tự tạo |
+
+### 5.5. Kết quả trên ba tập
+
+**Số ô theo cờ** (tỉ lệ trên tổng số ô của tập):
+
+| Cờ | train | val | test |
+|---|---|---|---|
+| 1: nội suy | 2457 (0.22%) | 305 (0.19%) | 171 (0.11%) |
+| 2: số đo sai, đã thay | 4 | 0 | 0 |
+| 3: để trống | 0 | 907 (0.58%) | 588 (0.37%) |
+
+**Số cửa sổ bị bỏ** trên số cửa sổ có thể tạo. Chỉ val và test mất cửa sổ, vì ba khoảng trống dài đều nằm trong hai tập này:
+
+| Cấu hình | train | val | test |
+|---|---|---|---|
+| Đầu vào 24 giờ, dự báo 6 giờ | 0 trên 189769 | 720 trên 26185 (2.75%) | 217 trên 26377 (0.82%) |
+| Đầu vào 7 ngày, dự báo 24 giờ | 0 trên 189121 | 2016 trên 26113 (7.72%) | 865 trên 26305 (3.29%) |
+
+**Ảnh hưởng đến đánh giá cảnh báo.** Đợt DO thấp là chuỗi DO dưới ngưỡng kéo dài ít nhất 1 giờ; hai chuỗi cách nhau không quá 1 giờ được gộp. Một đợt bị mất khỏi đánh giá khi không còn mốc nào của nó nằm trong nhãn của cửa sổ được giữ. Trong số các đợt DO dưới 6 mg/L (train 152, val 68, test 100):
+- cấu hình 24 giờ, 6 giờ mất 2 đợt ở val, không mất đợt nào ở test;
+- cấu hình 7 ngày, 24 giờ mất 2 đợt ở val và 6 đợt ở test, vì cửa sổ dài hơn nên chạm khoảng trống nhiều hơn.
+
+Các đợt bị mất nằm trong vài ngày nóng ngay sau hai lần bảo trì, DO thấp nhất 5.6 đến 6.0 mg/L. Không đợt DO dưới 5 mg/L nào bị mất.
+
+**Hạn chế được chấp nhận.** Nội suy dùng số đo sau khoảng trống, có thể là số đo ở thời điểm mô hình chưa được biết. Ví dụ ở mục 5.1: ô DO lúc 10:00 ngày 2019-07-15 được điền 7.1967 từ số đo 10:30. Cửa sổ có thời điểm dự báo 10:15 có đầu vào kết thúc ở ô 10:00, nên gián tiếp dùng số đo 10:30, sau thời điểm dự báo. Trường hợp này chiếm 0.52% cửa sổ train, 0.71% val, 0.39% test (đầu vào 24 giờ). Hạn chế được chấp nhận vì tỉ lệ nhỏ, mọi thí nghiệm so sánh đặc trưng dùng chung dữ liệu nên chịu ảnh hưởng như nhau, và DO điền không bao giờ được dùng để tính sai số.
 
 ## 6. Đầu ra và cờ đánh dấu
 
 ### 6.1. Đầu ra
 
-Ba file train, val, test đã làm sạch, cùng cấu trúc với splits/. Ô thuộc khoảng trống dài vẫn để trống, nên ở bước tạo cửa sổ chỉ cần bỏ mọi cửa sổ có ô trống.
+Thư mục base_splits/ gồm ba file train.csv, val.csv, test.csv, sinh bởi scripts/build_base.py. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l. Ô cờ 0 chép nguyên văn từ nguồn; ô cờ 1 và 2 làm tròn 4 chữ số thập phân; ô cờ 3 ghi NA. Ở bước tạo cửa sổ chỉ cần bỏ mọi cửa sổ có ô cờ 3.
 
 ### 6.2. Cờ
 
-Mỗi biến có thêm một cột cờ để phân biệt số đo thật với số điền. Cờ tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2021-12-01 10:30, chỉ pH trống 4.5 giờ):
+Mỗi biến có một cột cờ để phân biệt số đo thật với số điền. Cờ tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2021-12-01 10:30, chỉ pH trống 4.5 giờ):
 
 | Giá trị cờ | Nghĩa |
 |---|---|
-| 0 | Đo thật |
-| 1 | Nội suy tuyến tính |
-| 2 | Sửa điểm bất thường (4 điểm DO ở mục 4.3) |
-| trống | Thuộc khoảng trống dài, giá trị cũng để trống |
+| 0 | Đo thật, giữ nguyên |
+| 1 | Ô trống trong nguồn, đã nội suy tuyến tính |
+| 2 | Số đo sai (ngoài miền ở mục 3 hoặc điểm DO bất thường ở mục 4.3), đã bị loại và nội suy |
+| 3 | Thuộc khoảng trống dài hơn 8 giờ hoặc ở đầu, cuối tập; giá trị để NA |
 
 ### 6.3. Cách dùng cờ
 
-Ô được điền nằm trong đầu vào thì mô hình đọc giá trị điền. Nằm trong nhãn thì mốc đó không được tính sai số: sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ DO là 0 hoặc 2. Trong mã, cờ DO được chuyển thành một dãy mặt nạ (1 với mốc tính sai số, 0 với mốc bỏ qua); sai số tại mỗi mốc được nhân với mặt nạ rồi chia cho tổng mặt nạ. Hàm mất mát khi huấn luyện được tính theo cùng cách, nên mô hình không học theo giá trị điền.
+Ô được điền nằm trong đầu vào thì mô hình đọc giá trị điền. Nằm trong nhãn thì mốc đó không được tính sai số: sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ DO bằng 0. Trong mã, cờ DO được chuyển thành một dãy mặt nạ (1 với mốc tính sai số, 0 với mốc bỏ qua); sai số tại mỗi mốc được nhân với mặt nạ rồi chia cho tổng mặt nạ. Hàm mất mát khi huấn luyện được tính theo cùng cách, nên mô hình không học theo giá trị điền.
 
 Ví dụ với ô DO lúc 2019-07-15 10:00 (đầu vào 24 giờ, dự báo 6 giờ):
 
 | Nhóm cửa sổ | Số cửa sổ | Vị trí ô 10:00 | Cách dùng |
 |---|---|---|---|
-| Thời điểm dự báo 10:15 đến 10:00 hôm sau | 96 | Đầu vào | Mô hình đọc giá trị điền 7.20 |
+| Thời điểm dự báo 10:15 đến 10:00 hôm sau | 96 | Đầu vào | Mô hình đọc giá trị điền 7.1967 |
 | Thời điểm dự báo 04:15 đến 10:00 | 24 | Nhãn | Mốc 10:00 không được tính sai số |
 
-## 7. Tham khảo cho giai đoạn sau
-
-Các nội dung dưới đây chưa được quyết định; chỉ ghi kết quả phân tích trên train.
-
-### 7.1. Biến đổi thang và chuẩn hóa
-
-| Biến | Biến đổi | Trung bình train | Độ lệch chuẩn train |
-|---|---|---|---|
-| do_mg_l | không | 8.300 | 1.236 |
-| water_temp_c | không | 17.777 | 5.717 |
-| ph | không | 7.541 | 0.222 |
-| spc_us_cm | không | 494.627 | 250.209 |
-| turbidity_fnu | log1p | 1.790 | 0.608 |
-| chl_fluor_ug_l | log1p | 1.334 | 0.372 |
-
-log1p là log tự nhiên của (1 cộng giá trị). Độ đục và chlorophyll lệch phải mạnh (hệ số lệch 4.26 và 3.00), sau log1p còn 0.93 và 0.60. Độ dẫn chỉ lệch nhẹ (0.53), log1p làm lệch ngược mạnh hơn (âm 0.69). Chuẩn hóa z-score (trừ trung bình, chia độ lệch chuẩn) phù hợp hơn đưa về đoạn 0 đến 1, vì val có giá trị vượt miền train (DO nhỏ nhất 4.12 so với 5.22 mg/L của train; nhiệt độ lớn nhất 30.16 so với 28.79 độ C).
-
-### 7.2. Tạo cửa sổ
-
-Các số cửa sổ ở mục 5 giả định: thời điểm dự báo dời mỗi lần 15 phút trong từng tập; nhãn nằm trọn trong tập; đầu vào được lấy dữ liệu cuối của tập liền trước; cửa sổ được giữ nếu nhãn còn ít nhất một mốc DO đo thật.
-
-## 8. Các xử lý không thực hiện
+## 7. Các xử lý không thực hiện
 
 | Xử lý | Lý do |
 |---|---|
@@ -276,14 +277,19 @@ Các số cửa sổ ở mục 5 giả định: thời điểm dự báo dời m
 | Xóa cực trị bằng ngưỡng thống kê | Phần lớn cực trị là hiện tượng thật (quang hợp, lũ, nắng nóng) |
 | Sửa điểm bất thường trong val và test | Làm sai lệch kết quả đánh giá |
 
-## 9. Tái lập
+## 8. Tái lập
 
-Chạy từ thư mục dataset:
+Chạy từ thư mục dataset. Tạo dữ liệu đã làm sạch và kiểm chứng:
 
 ```
-python analysis/cleaning_study.py           # mien gia tri, diem DO nghi van (pandas, numpy, scipy)
-python analysis/window_scaler_study.py      # phan loai diem DO bat thuong, thong so chuan hoa
-python analysis/gap_distribution_study.py   # phan bo khoang trong theo bien va buoc thay doi tu nhien tren train
+python scripts/build_base.py                # tao base_splits/ tu raw/ (numpy)
+python scripts/verify.py                    # kiem chung, gom ca cac so lieu o muc 5.5 (thu vien chuan)
+```
+
+Các phân tích làm căn cứ (đọc thẳng từ raw/, ghi vào analysis/results/):
+
+```
+python analysis/cleaning_study.py           # muc 3, 4: mien gia tri, buoc thay doi 15 phut, diem DO dao chieu (pandas, numpy)
 python analysis/imputation_benchmark.py     # muc 5.3: tam phuong phap A den H (them scikit-learn; torch, pypots cho H, khoang 35 phut)
 python analysis/threshold_study.py          # muc 5.2, 5.4: bang tan suat, diem chuyen, do nhay theo nguong
 python analysis/gap_histogram_figure.py     # bieu do muc 5.2 (matplotlib)

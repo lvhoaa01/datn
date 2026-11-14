@@ -1,19 +1,24 @@
-"""Thong ke mo ta dataset tu ba file split (can pandas, numpy).
-Ket qua ghi vao thu muc stats/. Chay tu thu muc dataset:  python scripts/describe.py
+"""Thong ke mo ta ba tap train, val, test truoc lam sach, dung cho README.md muc 4 (can pandas, numpy).
+
+Ghi vao analysis/results/: feature_stats (tung bien), gap_stats (khoang trong theo dong), long_gaps (khoang trong
+dai hon 8 gio, theo bien), do_dynamics (DO theo tap), monthly_dynamics, split_by_regime (theo thang, theo mua).
+Chay tu thu muc dataset: python analysis/describe.py
 """
-import json
 import os
+import sys
 import numpy as np
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "stats")
-F = ["do_mg_l", "water_temp_c", "ph", "spc_us_cm", "turbidity_fnu", "chl_fluor_ug_l"]
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from common import FEATURES as F, MAX_GAP, load_raw_split  # noqa: E402
+
+OUT = os.path.join(ROOT, "analysis", "results")
 STEP_H = 0.25
 
 
 def load(name):
-    d = pd.read_csv(os.path.join(ROOT, "splits", f"{name}.csv"), na_values=["NA"], parse_dates=["datetime_pst"])
+    d = load_raw_split(name)
     return d.set_index("datetime_pst")
 
 
@@ -22,15 +27,6 @@ def runs(mask):
     d = np.diff(np.concatenate([[0], m.astype(np.int8), [0]]))
     s, e = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
     return s, e - s
-
-
-def fill_short(s, k=4):
-    v = s.to_numpy(float).copy()
-    st, ln = runs(np.isnan(v))
-    for a, l in zip(st, ln):
-        if l <= k and a > 0 and a + l < len(v):
-            v[a:a + l] = np.linspace(v[a - 1], v[a + l], l + 2)[1:-1]
-    return v
 
 
 def episodes(below, min_h=1.0, merge_h=1.0):
@@ -61,7 +57,6 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     S = {n: load(n) for n in ["train", "val", "test"]}
     S["all"] = pd.concat([S["train"], S["val"], S["test"]])
-    res = {}
     # 1. thong ke tung bien
     rows = []
     for n, d in S.items():
@@ -73,37 +68,32 @@ def main():
                              min=q[0], p01=q[1], p05=q[2], p25=q[3], median=q[4], p75=q[5], p95=q[6], p99=q[7], max=q[8]))
     fs = pd.DataFrame(rows).round(3)
     fs.to_csv(os.path.join(OUT, "feature_stats.csv"), index=False)
-    # 2. cau truc khuyet va cua so
+    # 2. cau truc khuyet
     rows = []
     for n, d in S.items():
         allna = d[F].isna().any(axis=1).to_numpy()
         st, ln = runs(allna)
-        filled = np.column_stack([fill_short(d[c]) for c in F])
-        ok = ~np.isnan(filled).any(axis=1)
-        st2, ln2 = runs(ok)
         r = dict(split=n, rows=len(d), start=str(d.index[0]), end=str(d.index[-1]), days=round(len(d) / 96, 1),
                  rows_any_na=int(allna.sum()), pct_any_na=round(allna.mean() * 100, 3), na_runs=len(ln),
-                 na_runs_le_1h=int((ln <= 4).sum()), na_runs_gt_6h=int((ln > 24).sum()),
-                 longest_na_run_h=float(ln.max() * STEP_H) if len(ln) else 0.0,
-                 pct_complete_after_fill_1h=round(ok.mean() * 100, 3),
-                 longest_complete_segment_days=round(ln2.max() * STEP_H / 24, 1))
+                 na_runs_le_1h=int((ln <= 4).sum()), na_runs_gt_8h=int((ln > MAX_GAP).sum()),
+                 longest_na_run_h=float(ln.max() * STEP_H) if len(ln) else 0.0)
         for c in F:
             s_, l_ = runs(d[c].isna().to_numpy())
             r[f"maxgap_h_{c}"] = float(l_.max() * STEP_H) if len(l_) else 0.0
         rows.append(r)
     gs = pd.DataFrame(rows)
     gs.to_csv(os.path.join(OUT, "gap_stats.csv"), index=False)
-    # NA runs > 6h, liet ke
+    # khoang trong dai hon 8 gio theo bien: dung cac o co 3 trong base_splits
     long = []
     for n in ["train", "val", "test"]:
         d = S[n]
         for c in F:
             s_, l_ = runs(d[c].isna().to_numpy())
             for a, l in zip(s_, l_):
-                if l * STEP_H > 6:
+                if l > MAX_GAP:
                     long.append(dict(split=n, feature=c, start=str(d.index[a]), hours=l * STEP_H))
     pd.DataFrame(long).to_csv(os.path.join(OUT, "long_gaps.csv"), index=False)
-    # 3. DO: dong luc, su kien, baseline, cua so
+    # 3. DO: dao dong ngay, bao hoa, dot DO thap, tuong quan
     full = S["all"]
     rows = []
     for n, d in S.items():
@@ -118,29 +108,9 @@ def main():
                  pct_time_lt6=(do < 6).mean() * 100, pct_time_lt5=(do < 5).mean() * 100,
                  corr_temp=do.corr(d["water_temp_c"]), corr_ph=do.corr(d["ph"]), corr_spc=do.corr(d["spc_us_cm"]),
                  corr_turb=do.corr(d["turbidity_fnu"]), corr_chl=do.corr(d["chl_fluor_ug_l"]))
-        for h in (1, 6, 24):
-            k = int(h / STEP_H)
-            e = (do.shift(-k) - do).dropna()
-            r[f"persistence_{h}h_RMSE"] = np.sqrt((e**2).mean())
-            r[f"persistence_{h}h_R2"] = 1 - (e**2).mean() / do.var()
-        e = (do - do.shift(96)).dropna()
-        r["same_time_yesterday_RMSE"] = np.sqrt((e**2).mean())
-        r["same_time_yesterday_R2"] = 1 - (e**2).mean() / do.var()
         rows.append(r)
     dyn = pd.DataFrame(rows).round(3)
     dyn.to_csv(os.path.join(OUT, "do_dynamics.csv"), index=False)
-    # cua so: nhan nam tron trong split, dau vao duoc lui qua ranh gioi (du lieu qua khu)
-    filled = np.column_stack([fill_short(full[c]) for c in F])
-    ok = ~np.isnan(filled).any(axis=1)
-    cs = np.concatenate([[0], np.cumsum(~ok)])
-    win = []
-    for n in ["train", "val", "test"]:
-        i0 = full.index.get_loc(S[n].index[0]); i1 = full.index.get_loc(S[n].index[-1])
-        for lin, lout, lab in [(24, 6, "24h_to_6h"), (168, 24, "7d_to_24h")]:
-            a, b = int(lin / STEP_H), int(lout / STEP_H)
-            t = np.arange(max(i0, a), i1 - b + 2)
-            win.append(dict(split=n, window=lab, count=int(((cs[t + b] - cs[t - a]) == 0).sum())))
-    pd.DataFrame(win).to_csv(os.path.join(OUT, "window_counts.csv"), index=False)
     # 4. theo thang va theo che do mua
     rows = []
     do = full["do_mg_l"]

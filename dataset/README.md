@@ -13,29 +13,30 @@ Mục đích sử dụng: dự báo nồng độ oxy hòa tan (DO) cho nhiều g
 | Khoảng dùng cho mô hình | 2019-01-01 00:00 đến 2025-11-30 23:45: 242496 dòng, 2526 ngày |
 | Biến | DO (biến cần dự báo) và năm biến hóa lý |
 | Dữ liệu gốc | Toàn bộ 2007 đến 2025, giữ trong raw/ |
-| Quy trình làm sạch | DE_XUAT_TIEN_XU_LY.md |
+| Dữ liệu đã làm sạch | base_splits/, quy trình ở LAM_SACH.md |
 
 ## 2. Cấu trúc thư mục
 
 | Đường dẫn | Nội dung |
 |---|---|
 | raw/cemp_RRI_2007_2025_source.csv | Bản sao nguyên vẹn file nguồn, 2007-12-25 đến 2025-12-31, 631835 dòng |
-| splits/train.csv, val.csv, test.csv | Ba tập con theo thời gian (mục 5), trích nguyên văn từ file nguồn |
+| base_splits/train.csv, val.csv, test.csv | Ba tập con theo thời gian (mục 5) đã làm sạch, kèm cờ cho từng ô; dùng cho thí nghiệm với dữ liệu gốc |
+| base_domain_splits/, base_semantic_splits/ | Sẽ có: base_splits cộng đặc trưng miền, cộng đặc trưng ngữ nghĩa; cùng dòng và cùng ranh giới với base_splits |
 | metadata/ | Metadata gốc của gói dữ liệu EDI edi.1177.9 và thông tin 15 trạm CEMP |
-| stats/ | Bảng thống kê mô tả, sinh bởi scripts/describe.py |
-| scripts/ | make_splits.py (tạo ba tập con), verify.py (kiểm chứng), describe.py (thống kê) |
-| DE_XUAT_TIEN_XU_LY.md, analysis/ | Quy trình làm sạch dữ liệu và các phân tích làm căn cứ |
+| scripts/ | common.py (hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ), build_base.py (tạo base_splits/), verify.py (kiểm chứng) |
+| analysis/ | Thống kê mô tả (describe.py), mức sai số tham chiếu (baselines.py) và các phân tích làm căn cứ cho quy trình làm sạch; kết quả trong analysis/results/ |
+| LAM_SACH.md | Quy trình làm sạch dữ liệu |
 | manifest_sha256.json | Mã băm SHA-256 và kích thước các file, dùng để kiểm tra file không bị thay đổi |
 
 ## 3. Định dạng dữ liệu
 
-Mỗi file trong splits/ là file CSV, mỗi dòng là một lần đo. Ba dòng đầu của train.csv:
+Mỗi file trong base_splits/ là file CSV, mỗi dòng là một lần đo, gồm cột thời gian, sáu biến và sáu cột cờ. Ba dòng của train.csv, dòng giữa có cả sáu biến được nội suy:
 
 ```
-datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l
-2019-01-01 00:00:00,8.79,10.1,7.5,842,5.69,1.95
-2019-01-01 00:15:00,8.8,10.09,7.5,843,5.82,1.97
-2019-01-01 00:30:00,8.82,10.07,7.5,841,5.61,1.75
+datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag_do_mg_l,flag_water_temp_c,flag_ph,flag_spc_us_cm,flag_turbidity_fnu,flag_chl_fluor_ug_l
+2019-06-04 07:45:00,7.42,19.86,7.09,97,6.66,2.92,0,0,0,0,0,0
+2019-06-04 08:00:00,7.4175,19.8625,7.0825,95.75,6.5881,2.839,1,1,1,1,1,1
+2019-06-04 08:15:00,7.415,19.865,7.075,94.5,6.5162,2.7581,1,1,1,1,1,1
 ```
 
 | Cột | Tên cột trong nguồn | Đơn vị | Ý nghĩa |
@@ -48,11 +49,15 @@ datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l
 | turbidity_fnu | turbidity | FNU | Độ đục, đo bằng ánh sáng hồng ngoại theo ISO 7027 |
 | chl_fluor_ug_l | fluorescence | ug/L | Huỳnh quang chlorophyll, chỉ thị gián tiếp lượng tảo |
 
-Giá trị được chép nguyên văn từ nguồn: không làm tròn, không điền ô trống, dấu thập phân là dấu chấm. Ô ghi NA là giá trị bị CEMP loại khi thẩm định hoặc không đo được do thiết bị trục trặc. Ví dụ dòng 2019-06-04 08:00:00 có cả sáu biến là NA.
+Cột flag_<tên biến> cho biết nguồn gốc giá trị: 0 là số đo thật, chép nguyên văn từ nguồn; 1 là ô trống trong nguồn, đã nội suy tuyến tính; 2 là số đo sai đã bị loại và nội suy; 3 là ô thuộc khoảng trống dài hơn 8 giờ, giá trị ghi NA. Định nghĩa đầy đủ ở LAM_SACH.md, mục 6. Dấu thập phân là dấu chấm.
+
+Trong file nguồn, ô ghi NA là giá trị bị CEMP loại khi thẩm định hoặc không đo được do thiết bị trục trặc. Ví dụ dòng 2019-06-04 08:00:00 trong nguồn có cả sáu biến là NA.
 
 Thiết bị đo là đầu đo đa thông số YSI EXO2 (dùng từ 2016-03-16). CEMP hiệu chuẩn thiết bị trước khi lắp, hiệu chỉnh sai lệch tích lũy khi đo ngoài hiện trường, kiểm tra sau khi thu hồi và rà soát số liệu hằng ngày, hằng tháng.
 
 ## 4. Đặc điểm dữ liệu
+
+Thống kê ở mục 4 tính trên dữ liệu trước làm sạch.
 
 ### 4.1. Thống kê mô tả (2019-01 đến 2025-11)
 
@@ -65,7 +70,7 @@ Thiết bị đo là đầu đo đa thông số YSI EXO2 (dùng từ 2016-03-16)
 | turbidity_fnu | 0.36 | 6.15 | 6.28 | 0.36 | 1.27 | 4.31 | 33.08 | 103.9 |
 | chl_fluor_ug_l | 0.31 | 3.02 | 1.76 | 0.31 | 0.79 | 2.64 | 9.33 | 29.62 |
 
-P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% số giá trị lớn hơn P99. Thống kê theo từng tập nằm trong stats/feature_stats.csv.
+P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% số giá trị lớn hơn P99. Thống kê theo từng tập nằm trong analysis/results/feature_stats.csv.
 
 - DO thường thấp hơn mức bão hòa một chút. Độ bão hòa tính từ DO, nhiệt độ và độ mặn có trung vị 85.6% (P01 là 65.4%, P99 là 109.8%), phù hợp với kênh tàu sâu có nhu cầu tiêu thụ oxy cao.
 - Nhiệt độ là yếu tố chính quyết định DO: nước càng ấm, oxy hòa tan càng ít (hệ số tương quan âm 0.73). pH biến đổi cùng chiều DO (tương quan 0.56), vì tảo quang hợp vừa sinh oxy vừa tiêu thụ CO2 làm pH tăng.
@@ -73,18 +78,15 @@ P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% s�
 
 ### 4.2. Dữ liệu khuyết
 
-Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 96.7% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở DE_XUAT_TIEN_XU_LY.md, mục 5.2.
+Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 96.7% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở LAM_SACH.md, mục 5.2.
 
-Chỉ có sáu khoảng trống dài hơn 6 giờ:
+Khoảng trống dài nhất trong train là 7.75 giờ (độ đục, tháng 8 năm 2019, cảm biến hỏng). Chỉ có ba sự kiện dài hơn 8 giờ, ngưỡng không nội suy của quy trình làm sạch, đều nằm trong val và test:
 
 | Tập | Bắt đầu | Độ dài | Biến | Bối cảnh |
 |---|---|---|---|---|
-| train | tháng 8 năm 2019 (ba đợt) | 7.25 đến 7.75 giờ | độ đục | Cảm biến độ đục hỏng |
 | val | 2024-09-02 14:00 | 21.25 giờ | cả sáu biến | Bảo trì |
 | val | 2025-02-14 03:30 | 99.25 giờ | độ dẫn | Trùng một đợt lũ |
 | test | 2025-09-10 09:30 | 24.5 giờ | cả sáu biến | Bảo trì |
-
-Đoạn dữ liệu liên tục không thiếu ô nào dài nhất là 833.6 ngày, nằm trong train.
 
 ### 4.3. Diễn biến của DO
 
@@ -95,7 +97,7 @@ Chỉ có sáu khoảng trống dài hơn 6 giờ:
 
 ### 4.4. Theo mùa
 
-Độ khó trong bảng là sai số RMSE (mg/L) của cách dự báo đơn giản nhất: lấy DO hiện tại làm dự báo cho 6 giờ sau. Sai số càng lớn thì DO thay đổi càng nhiều trong 6 giờ, càng khó dự báo. Số liệu gộp 2019 đến 2025; chi tiết theo tháng trong stats/monthly_dynamics.csv.
+Độ khó trong bảng là sai số RMSE (mg/L) của cách dự báo đơn giản nhất: lấy DO hiện tại làm dự báo cho 6 giờ sau. Sai số càng lớn thì DO thay đổi càng nhiều trong 6 giờ, càng khó dự báo. Số liệu gộp 2019 đến 2025; chi tiết theo tháng trong analysis/results/monthly_dynamics.csv.
 
 | Giai đoạn | Tháng | DO trung bình (mg/L) | Chênh lệch trong ngày (mg/L) | Nhiệt độ (độ C) | Độ khó 6 giờ | Số đợt DO dưới 6 |
 |---|---|---|---|---|---|---|
@@ -145,58 +147,97 @@ Các cách chia khác đã xem xét:
 | Val từ 2024-07 đến 2025-03 | Val thiếu tháng 6 của mùa nóng |
 | Val và test chỉ gồm tháng 5 đến 11 của 2024 và 2025 | Dữ liệu không liền mạch giữa các tập |
 
-### 5.2. Số mẫu dùng được
+### 5.2. Cấu hình dự báo và số mẫu
 
-Mỗi mẫu (gọi là cửa sổ) gồm một đoạn dữ liệu quá khứ đưa vào mô hình và đoạn DO cần dự báo ngay sau đó. Ví dụ với cấu hình đầu vào 24 giờ, dự báo 6 giờ: mẫu dự báo lúc 12:00 dùng sáu biến từ 12:00 hôm trước đến 11:45, và dự báo DO từ 12:00 đến 17:45. Mẫu tiếp theo dự báo lúc 12:15, và cứ thế dời 15 phút một lần.
+Mỗi mẫu (gọi là cửa sổ) gồm một đoạn dữ liệu quá khứ đưa vào mô hình (đầu vào) và đoạn DO cần dự báo ngay sau đó (nhãn). Ví dụ với cấu hình đầu vào 24 giờ, dự báo 6 giờ: mẫu dự báo lúc 12:00 dùng sáu biến từ 12:00 hôm trước đến 11:45, và dự báo DO từ 12:00 đến 17:45. Mẫu tiếp theo dự báo lúc 12:15, và cứ thế dời 15 phút một lần.
 
-Số mẫu dùng được sau khi làm sạch, trên số mẫu có thể tạo nếu dữ liệu không thiếu ô nào:
+Hai cấu hình được chạy song song:
+
+| Cấu hình | Đầu vào | Nhãn | Vai trò |
+|---|---|---|---|
+| 24 giờ, 6 giờ | 96 mốc | 24 mốc | Chính: dự báo trong ngày, phục vụ cảnh báo sớm vài giờ |
+| 7 ngày, 24 giờ | 672 mốc | 96 mốc | Phụ: dự báo trọn một chu kỳ ngày đêm, mô hình thấy được xu hướng nhiều ngày |
+
+Quy tắc tạo cửa sổ (cài đặt trong scripts/common.py, hàm window_starts):
+- nhãn nằm trọn trong một tập; đầu vào được lấy dữ liệu cuối của tập liền trước, vì đó là dữ liệu quá khứ;
+- bỏ cửa sổ có ô cờ 3 trong đầu vào hoặc nhãn;
+- bỏ cửa sổ mà nhãn không còn mốc DO cờ 0 nào; sai số chỉ tính trên các mốc nhãn có DO cờ 0.
+
+Số mẫu dùng được trên số mẫu có thể tạo:
 
 | Cấu hình | Train | Val | Test |
 |---|---|---|---|
-| Đầu vào 24 giờ, dự báo 6 giờ | 189769 trên 189769 | 25465 trên 26185 | 26160 trên 26377 |
-| Đầu vào 7 ngày, dự báo 24 giờ | 189121 trên 189121 | 24097 trên 26113 | 25440 trên 26305 |
+| 24 giờ, 6 giờ | 189769 trên 189769 | 25465 trên 26185 | 26160 trên 26377 |
+| 7 ngày, 24 giờ | 189121 trên 189121 | 24097 trên 26113 | 25440 trên 26305 |
 
-Các mẫu bị bỏ là các mẫu chạm vào ba khoảng trống dài hơn 8 giờ: hai lần bảo trì (val tháng 9 năm 2024, test tháng 9 năm 2025) và đợt mất độ dẫn trong lũ tháng 2 năm 2025 (val). Khoảng trống ngắn hơn được nội suy tuyến tính (giải thích ở DE_XUAT_TIEN_XU_LY.md, mục 5).
+Các mẫu bị bỏ là các mẫu chạm vào ô cờ 3, tức ba khoảng trống dài hơn 8 giờ ở mục 4.2. Khoảng trống ngắn hơn được nội suy tuyến tính (giải thích ở LAM_SACH.md, mục 5).
 
 ### 5.3. Mức sai số tham chiếu
 
-Hai cách dự báo không cần mô hình, dùng làm mức so sánh cho sai số của các mô hình.
+**Mục đích.** Một con số sai số đứng riêng (ví dụ MAE 0.15 mg/L) không cho biết mô hình tốt hay kém. Vì vậy sai số của mô hình được so với sai số của các cách dự báo đơn giản, không cần học từ dữ liệu, gọi là mức tham chiếu (baseline). Mô hình chỉ có giá trị khi sai số thấp hơn mức tham chiếu tốt nhất; khoảng cách giữa hai sai số cho biết phần mô hình thực sự học được.
 
-- Giữ nguyên giá trị hiện tại (persistence): DO sau 1 giờ hoặc 6 giờ bằng DO hiện tại.
-- Cùng giờ hôm trước: DO dự báo bằng DO cùng giờ ngày hôm trước. Với tầm dự báo đến 24 giờ, cách này cho sai số bằng persistence 24 giờ.
+**Hai cách dự báo tham chiếu.** Gọi thời điểm dự báo là t, mốc đo cuối cùng trước đó là t trừ 15 phút.
 
-RMSE tính theo mg/L. R2 là tỉ lệ biến động của DO được dự báo giải thích, bằng 1 khi dự báo đúng hoàn toàn.
-
-| Tập | Persistence 1 giờ: RMSE, R2 | Persistence 6 giờ: RMSE, R2 | Cùng giờ hôm trước: RMSE, R2 |
+| Cách | Tên thường dùng | Giá trị dự báo cho mốc t cộng k | Giả định |
 |---|---|---|---|
-| train | 0.216, 0.969 | 0.479, 0.850 | 0.311, 0.937 |
-| val | 0.233, 0.980 | 0.490, 0.911 | 0.325, 0.961 |
-| test | 0.189, 0.955 | 0.392, 0.808 | 0.245, 0.925 |
+| Giữ nguyên | Persistence | DO tại t trừ 15 phút, như nhau cho mọi k | DO không đổi trong khoảng dự báo |
+| Cùng giờ hôm qua | Seasonal naive, chu kỳ 1 ngày | DO tại t cộng k trừ 24 giờ | Diễn biến DO hôm nay lặp lại hôm qua |
 
-R2 của persistence 1 giờ đã khoảng 0.97, vì DO thay đổi chậm trong 1 giờ; ở tầm này R2 ít phân biệt được các mô hình. Độ khó tăng ở tầm 6 giờ và trong mùa nóng (mục 4.4).
+Cả hai chỉ dùng dữ liệu nằm trong đầu vào, nên mô hình nào cũng có sẵn thông tin này.
+
+**Ví dụ** (test, thời điểm dự báo 2025-07-15 12:00, DO lúc 11:45 là 6.46 mg/L):
+
+| Mốc | DO thật | Giữ nguyên | Sai lệch | Cùng giờ hôm qua | Sai lệch |
+|---|---|---|---|---|---|
+| 12:00 | 6.46 | 6.46 | 0.00 | 6.33 | 0.13 |
+| 14:00 | 6.81 | 6.46 | 0.35 | 6.82 | 0.01 |
+| 16:00 | 8.09 | 6.46 | 1.63 | 7.99 | 0.10 |
+| 17:45 | 7.13 | 6.46 | 0.67 | 6.97 | 0.16 |
+
+Giữ nguyên chỉ đúng ở các bước đầu: buổi chiều tảo quang hợp làm DO tăng, nên sai lệch lớn dần theo tầm dự báo. Cùng giờ hôm qua bắt được nhịp ngày đêm này.
+
+**Cách tính.** Tính trên đúng các cửa sổ ở mục 5.2 và chỉ trên các mốc nhãn có DO cờ 0, giống hệt cách đánh giá mô hình. Sai số lấy trung bình trên mọi bước của nhãn và mọi cửa sổ:
+- MAE: trung bình độ lệch tuyệt đối, mg/L;
+- RMSE: căn bậc hai của trung bình bình phương độ lệch, mg/L; nặng hơn MAE với các lần sai lớn;
+- R2: 1 trừ tỉ số giữa tổng bình phương sai số và tổng bình phương độ lệch của DO thật quanh trung bình của tập; bằng 1 khi dự báo đúng hoàn toàn.
+
+**Kết quả** (train và chi tiết ở analysis/results/baselines.csv):
+
+| Cấu hình | Cách | Val: MAE | Val: RMSE | Val: R2 | Test: MAE | Test: RMSE | Test: R2 |
+|---|---|---|---|---|---|---|---|
+| 24 giờ, 6 giờ | Giữ nguyên | 0.225 | 0.371 | 0.949 | 0.193 | 0.300 | 0.887 |
+| 24 giờ, 6 giờ | Cùng giờ hôm qua | 0.211 | 0.322 | 0.962 | 0.176 | 0.245 | 0.925 |
+| 7 ngày, 24 giờ | Giữ nguyên | 0.289 | 0.453 | 0.927 | 0.248 | 0.368 | 0.830 |
+| 7 ngày, 24 giờ | Cùng giờ hôm qua | 0.207 | 0.315 | 0.965 | 0.175 | 0.242 | 0.926 |
+
+**Cách đọc.**
+- Cùng giờ hôm qua tốt hơn giữ nguyên ở cả hai cấu hình và là mức mô hình cần vượt. Chênh lệch giữa hai cách lớn hơn ở cấu hình 7 ngày, 24 giờ, vì giữ nguyên càng sai khi tầm dự báo càng dài.
+- R2 của mức tham chiếu đã cao (0.83 đến 0.97), vì phần lớn biến động của DO trong một tập là biến động theo mùa, cách nào cũng nắm được. Do đó so sánh mô hình nên dựa chủ yếu vào MAE và RMSE.
+- Mô hình và các nhóm đặc trưng được so trên cùng mức tham chiếu, nên phần cải thiện so với cùng giờ hôm qua cho biết đóng góp của từng nhóm đặc trưng.
 
 ### 5.4. Quy tắc sử dụng
 
 1. Mọi thông số rút ra từ dữ liệu (ví dụ trung bình và độ lệch chuẩn để chuẩn hóa, ngưỡng xử lý) chỉ tính trên train. Các thí nghiệm so sánh mô hình (dữ liệu gốc, thêm đặc trưng miền, thêm đặc trưng ngữ nghĩa) dùng chung các mẫu và ranh giới tập.
-2. Chọn cấu hình trên val. Sau đó huấn luyện lại trên train cộng val (2019-01-01 đến 2025-02-28) và đánh giá trên test đúng một lần.
+2. Chọn siêu tham số mô hình trên val, riêng cho từng cấu hình. Sau đó huấn luyện lại trên train cộng val (2019-01-01 đến 2025-02-28) và đánh giá trên test đúng một lần.
 3. Cảnh báo được đánh giá trên test ở ngưỡng 6 mg/L, vì test không có đợt dưới 5 mg/L; ngưỡng 5 mg/L chỉ báo cáo trên val. Hai ngưỡng này tương ứng với mục tiêu chất lượng nước cho hạ lưu sông San Joaquin: DO 5.0 mg/L quanh năm và 6.0 mg/L từ tháng 9 đến 11 (theo Basin Plan của vùng Central Valley; chưa đối chiếu với phiên bản hiện hành).
-4. Báo cáo MAE, RMSE, R2 trên toàn bộ test và theo từng giai đoạn mùa, kèm mức sai số tham chiếu ở mục 5.3.
+4. Báo cáo MAE, RMSE, R2 cho từng cấu hình trên toàn bộ test và theo từng giai đoạn mùa, kèm mức sai số tham chiếu ở mục 5.3.
 
 ## 6. Kiểm chứng và tái lập
 
 scripts/verify.py kiểm tra:
 - mã SHA-256 của từng file khớp manifest_sha256.json;
 - file nguồn đủ 631835 dòng (khớp metadata gốc), các dòng cách đều 15 phút;
-- mỗi tập con đúng khoảng thời gian, đúng số dòng, không thiếu dòng;
-- từng ô của tập con trùng nguyên văn với file nguồn;
-- ba tập nối tiếp nhau, không chồng lấn; số ô NA khớp file nguồn.
+- mỗi tập trong base_splits/ đúng khoảng thời gian, đúng số dòng, không thiếu dòng; ba tập nối tiếp nhau, không chồng lấn;
+- ô cờ 0 trùng nguyên văn với file nguồn; ô cờ 1, 2 bằng nội suy tuyến tính giữa hai số đo thật kề bên; ô cờ 3 ghi NA;
+- số ô theo cờ và số mẫu ở mục 5.2 khớp tài liệu.
 
-Kết quả ngày 2026-11-13: đạt toàn bộ, 0 ô sai khác. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
+Kết quả ngày 2026-11-14: đạt toàn bộ. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
 
 ```
-python scripts/make_splits.py      # tao lai splits/ tu raw/
+python scripts/build_base.py       # tao lai base_splits/ tu raw/, can numpy
 python scripts/verify.py           # kiem chung; them --write de ghi lai manifest
-python scripts/describe.py         # tao lai stats/, can pandas va numpy
+python analysis/describe.py        # thong ke muc 4, ghi vao analysis/results/, can pandas va numpy
+python analysis/baselines.py       # muc sai so tham chieu muc 5.3, can pandas va numpy
 ```
 
 ## 7. Nguồn và trích dẫn
