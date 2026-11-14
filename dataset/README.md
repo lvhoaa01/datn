@@ -33,18 +33,19 @@ Mã nguồn và kết quả phân tích nằm ngoài thư mục dataset, ở g�
 | scripts/common.py | Hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ |
 | scripts/build_base_splits.py, scripts/verify_dataset.py | Tạo base_splits/ từ raw/; kiểm chứng dataset (mục 6) |
 | scripts/describe_dataset.py, scripts/baselines.py | Thống kê mô tả (mục 4); mức sai số tham chiếu (mục 5.3) |
-| scripts/cleaning_study.py, scripts/imputation_benchmark.py, scripts/gap_threshold_study.py, scripts/gap_histogram_figure.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md) |
+| scripts/train.py | Huấn luyện mô hình. Hiện có phần chuẩn hóa (trừ trung bình, chia độ lệch chuẩn, khớp trên train) và tạo cửa sổ theo mục 5.2, đầu vào gồm sáu biến và sáu cột cờ; kiểm tra bằng `uv run python scripts/train.py --check` |
+| scripts/cleaning_study.py, scripts/causal_imputation_benchmark.py, scripts/gap_threshold_study.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md) |
 | artifacts/dataset/ | Kết quả của các script trên: bảng thống kê và hình |
 
 ## 3. Định dạng dữ liệu
 
-Mỗi file trong base_splits/ là file CSV, mỗi dòng là một lần đo, gồm cột thời gian, sáu biến và sáu cột cờ. Ba dòng của train.csv, dòng giữa có cả sáu biến được nội suy:
+Mỗi file trong base_splits/ là file CSV, mỗi dòng là một lần đo, gồm cột thời gian, sáu biến và sáu cột cờ. Ba dòng của train.csv; trong nguồn, hai dòng sau có cả sáu biến trống và được điền bằng số đo của dòng đầu:
 
 ```
 datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag_do_mg_l,flag_water_temp_c,flag_ph,flag_spc_us_cm,flag_turbidity_fnu,flag_chl_fluor_ug_l
 2019-06-04 07:45:00,7.42,19.86,7.09,97,6.66,2.92,0,0,0,0,0,0
-2019-06-04 08:00:00,7.4175,19.8625,7.0825,95.75,6.5881,2.839,1,1,1,1,1,1
-2019-06-04 08:15:00,7.415,19.865,7.075,94.5,6.5162,2.7581,1,1,1,1,1,1
+2019-06-04 08:00:00,7.42,19.86,7.09,97,6.66,2.92,1,1,1,1,1,1
+2019-06-04 08:15:00,7.42,19.86,7.09,97,6.66,2.92,1,1,1,1,1,1
 ```
 
 | Cột | Tên cột trong nguồn | Đơn vị | Ý nghĩa |
@@ -57,7 +58,7 @@ datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag
 | turbidity_fnu | turbidity | FNU | Độ đục, đo bằng ánh sáng hồng ngoại theo ISO 7027 |
 | chl_fluor_ug_l | fluorescence | ug/L | Huỳnh quang chlorophyll, chỉ thị gián tiếp lượng tảo |
 
-Cột flag_<tên biến> cho biết nguồn gốc giá trị: 0 là số đo thật, chép nguyên văn từ nguồn; 1 là ô trống trong nguồn, đã nội suy tuyến tính; 2 là số đo sai đã bị loại và nội suy; 3 là ô thuộc khoảng trống dài hơn 8 giờ, giá trị ghi NA. Định nghĩa đầy đủ ở LAM_SACH.md, mục 6. Dấu thập phân là dấu chấm.
+Cột flag_<tên biến> cho biết nguồn gốc giá trị: 0 là số đo thật, chép nguyên văn từ nguồn; 1 là ô trống (hoặc số đo ngoài miền vật lý) được điền bằng số đo thật gần nhất phía trước; -1 là ô cách số đo thật gần nhất phía trước hơn 8 giờ, giá trị ghi NA. Định nghĩa đầy đủ ở LAM_SACH.md, mục 5. Dấu thập phân là dấu chấm.
 
 Trong file nguồn, ô ghi NA là giá trị bị CEMP loại khi thẩm định hoặc không đo được do thiết bị trục trặc. Ví dụ dòng 2019-06-04 08:00:00 trong nguồn có cả sáu biến là NA.
 
@@ -86,9 +87,9 @@ P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% s�
 
 ### 4.2. Dữ liệu khuyết
 
-Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 96.7% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở LAM_SACH.md, mục 5.2.
+Mỗi biến thiếu 0.21 đến 0.44% số dòng; 0.77% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 96.7% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở LAM_SACH.md, mục 4.1.
 
-Khoảng trống dài nhất trong train là 7.75 giờ (độ đục, tháng 8 năm 2019, cảm biến hỏng). Chỉ có ba sự kiện dài hơn 8 giờ, ngưỡng không nội suy của quy trình làm sạch, đều nằm trong val và test:
+Khoảng trống dài nhất trong train là 7.75 giờ (độ đục, tháng 8 năm 2019, cảm biến hỏng). Chỉ có ba sự kiện dài hơn 8 giờ, ngưỡng điền của quy trình làm sạch, đều nằm trong val và test:
 
 | Tập | Bắt đầu | Độ dài | Biến | Bối cảnh |
 |---|---|---|---|---|
@@ -168,17 +169,19 @@ Hai cấu hình được chạy song song:
 
 Quy tắc tạo cửa sổ (cài đặt trong scripts/common.py, hàm window_starts):
 - nhãn nằm trọn trong một tập; đầu vào được lấy dữ liệu cuối của tập liền trước, vì đó là dữ liệu quá khứ;
-- bỏ cửa sổ có ô cờ 3 trong đầu vào hoặc nhãn;
+- bỏ cửa sổ có ô cờ -1 trong đầu vào hoặc nhãn;
 - bỏ cửa sổ mà nhãn không còn mốc DO cờ 0 nào; sai số chỉ tính trên các mốc nhãn có DO cờ 0.
 
 Số mẫu dùng được trên số mẫu có thể tạo:
 
 | Cấu hình | Train | Val | Test |
 |---|---|---|---|
-| 24 giờ, 6 giờ | 189769 trên 189769 | 25465 trên 26185 | 26160 trên 26377 |
-| 7 ngày, 24 giờ | 189121 trên 189121 | 24097 trên 26113 | 25440 trên 26305 |
+| 24 giờ, 6 giờ | 189769 trên 189769 | 25520 trên 26185 | 26183 trên 26377 |
+| 7 ngày, 24 giờ | 189121 trên 189121 | 24161 trên 26113 | 25472 trên 26305 |
 
-Các mẫu bị bỏ là các mẫu chạm vào ô cờ 3, tức ba khoảng trống dài hơn 8 giờ ở mục 4.2. Khoảng trống ngắn hơn được nội suy tuyến tính (giải thích ở LAM_SACH.md, mục 5).
+Các mẫu bị bỏ là các mẫu chạm vào ô cờ -1, tức phần sau 8 giờ đầu của ba khoảng trống dài ở mục 4.2. Ô trống khác được điền bằng số đo thật gần nhất phía trước, chỉ dùng quá khứ (giải thích ở LAM_SACH.md, mục 4).
+
+Đầu vào của mô hình gồm sáu biến và sáu cột cờ (1 với ô được điền, 0 với số đo thật), để mô hình phân biệt giá trị điền với số đo thật.
 
 ### 5.3. Mức sai số tham chiếu
 
@@ -214,9 +217,9 @@ Giữ nguyên chỉ đúng ở các bước đầu: buổi chiều tảo quang h
 | Cấu hình | Cách | Val: MAE | Val: RMSE | Val: R2 | Test: MAE | Test: RMSE | Test: R2 |
 |---|---|---|---|---|---|---|---|
 | 24 giờ, 6 giờ | Giữ nguyên | 0.225 | 0.371 | 0.949 | 0.193 | 0.300 | 0.887 |
-| 24 giờ, 6 giờ | Cùng giờ hôm qua | 0.211 | 0.322 | 0.962 | 0.176 | 0.245 | 0.925 |
+| 24 giờ, 6 giờ | Cùng giờ hôm qua | 0.212 | 0.323 | 0.962 | 0.176 | 0.245 | 0.925 |
 | 7 ngày, 24 giờ | Giữ nguyên | 0.289 | 0.453 | 0.927 | 0.248 | 0.368 | 0.830 |
-| 7 ngày, 24 giờ | Cùng giờ hôm qua | 0.207 | 0.315 | 0.965 | 0.175 | 0.242 | 0.926 |
+| 7 ngày, 24 giờ | Cùng giờ hôm qua | 0.206 | 0.315 | 0.965 | 0.175 | 0.242 | 0.926 |
 
 **Cách đọc.**
 - Cùng giờ hôm qua tốt hơn giữ nguyên ở cả hai cấu hình và là mức mô hình cần vượt. Chênh lệch giữa hai cách lớn hơn ở cấu hình 7 ngày, 24 giờ, vì giữ nguyên càng sai khi tầm dự báo càng dài.
@@ -236,19 +239,24 @@ scripts/verify_dataset.py kiểm tra:
 - mã SHA-256 của từng file khớp manifest_sha256.json;
 - file nguồn đủ 631835 dòng (khớp metadata gốc), các dòng cách đều 15 phút;
 - mỗi tập trong base_splits/ đúng khoảng thời gian, đúng số dòng, không thiếu dòng; ba tập nối tiếp nhau, không chồng lấn;
-- ô cờ 0 trùng nguyên văn với file nguồn; ô cờ 1, 2 bằng nội suy tuyến tính giữa hai số đo thật kề bên; ô cờ 3 ghi NA;
+- ô cờ 0 trùng nguyên văn với file nguồn; ô cờ 1 trùng nguyên văn số đo thật gần nhất phía trước, cách không quá 8 giờ; ô cờ -1 ghi NA (quy tắc được cài đặt lại độc lập để so từng ô);
 - số ô theo cờ và số mẫu ở mục 5.2 khớp tài liệu.
 
 Kết quả ngày 2026-11-14: đạt toàn bộ. Bản sao raw/ có SHA-256 199692356508935d8f6490da111f339d059d4985df900433f925c68d71650398, trùng file tải từ nguồn.
 
-Môi trường Python khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo:
+Môi trường Python (3.12, phiên bản thư viện khóa trong uv.lock) khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo theo thứ tự (lệnh đầu tạo base_splits/ mà các lệnh sau dùng):
 
 ```
-uv run python scripts/build_base_splits.py     # tạo lại dataset/base_splits/ từ dataset/raw/
-uv run python scripts/verify_dataset.py        # kiểm chứng; thêm --write để ghi lại manifest
-uv run python scripts/describe_dataset.py      # thống kê mục 4, ghi vào artifacts/dataset/
-uv run python scripts/baselines.py             # mức sai số tham chiếu mục 5.3
+uv run python scripts/build_base_splits.py            # dataset/base_splits/ từ dataset/raw/
+uv run python scripts/describe_dataset.py             # thống kê mục 4
+uv run python scripts/cleaning_study.py               # căn cứ LAM_SACH.md mục 3, 6
+uv run python scripts/causal_imputation_benchmark.py  # căn cứ LAM_SACH.md mục 4.2, 4.3
+uv run python scripts/gap_threshold_study.py          # căn cứ LAM_SACH.md mục 4.1, 4.3, 4.5
+uv run python scripts/baselines.py                    # mức sai số tham chiếu mục 5.3
+uv run python scripts/verify_dataset.py               # kiểm chứng; --write để ghi lại manifest
 ```
+
+Các lệnh trên ghi đè dataset/base_splits/ và artifacts/dataset/; phần ngẫu nhiên dùng seed cố định. Chạy toàn bộ rồi chạy verify_dataset.py không kèm --write: nếu đạt, mọi file sinh ra trùng từng byte với manifest. Đã thử ngày 2026-11-14 trên một bản sao chỉ gồm file nguồn, metadata, mã và tài liệu: cả 19 file (3 tập trong base_splits/ và 16 file trong artifacts/dataset/) được sinh lại trùng từng byte.
 
 ## 7. Nguồn và trích dẫn
 

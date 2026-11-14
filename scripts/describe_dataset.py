@@ -8,7 +8,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from common import FEATURES as F, MAX_GAP, STATS as OUT, load_raw_split
+from common import FEATURES as F, MAX_GAP, NAMES, STATS as OUT, load_raw_split, runs
 
 STEP_H = 0.25             # một mốc = 0.25 giờ
 
@@ -17,14 +17,6 @@ def load(name):
     """Tập chưa làm sạch, chỉ số là datetime_pst."""
     d = load_raw_split(name)
     return d.set_index("datetime_pst")
-
-
-def runs(mask):
-    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp."""
-    m = np.asarray(mask, bool)
-    d = np.diff(np.concatenate([[0], m.astype(np.int8), [0]]))
-    s, e = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
-    return s, e - s
 
 
 def episodes(below, min_h=1.0, merge_h=1.0):
@@ -60,7 +52,7 @@ def season(m):
 def main():
     """Tính và ghi sáu bảng thống kê."""
     os.makedirs(OUT, exist_ok=True)
-    S = {n: load(n) for n in ["train", "val", "test"]}
+    S = {n: load(n) for n in NAMES}
     S["all"] = pd.concat([S["train"], S["val"], S["test"]])
     # 1. thống kê từng biến
     rows = []
@@ -90,7 +82,7 @@ def main():
     gs.to_csv(os.path.join(OUT, "gap_stats.csv"), index=False)
     # khoảng trống trong nguồn dài hơn MAX_GAP mốc, theo từng biến
     long = []
-    for n in ["train", "val", "test"]:
+    for n in NAMES:
         d = S[n]
         for c in F:
             s_, l_ = runs(d[c].isna().to_numpy())
@@ -134,7 +126,7 @@ def main():
                          persistence_6h_RMSE=np.sqrt((e6[sel] ** 2).mean()), episodes_lt6=ep6, episodes_lt5=ep5))
     pd.DataFrame(rows).round(3).to_csv(os.path.join(OUT, "monthly_dynamics.csv"), index=False)
     rows = []
-    for n in ["train", "val", "test"]:
+    for n in NAMES:
         d = S[n]
         for reg in ["lanh", "xuan", "nong", "thu"]:
             sel = d.index.month.map(season) == reg

@@ -1,81 +1,53 @@
 """Tạo dataset/base_splits/: ba tập train, val, test đã làm sạch, kèm cột cờ cho từng biến.
 
-Quy trình (dataset/LAM_SACH.md), áp dụng riêng từng tập, không dùng giá trị của tập khác:
-  1. Giá trị ngoài miền vật lý bị loại (cờ 2).
-  2. Chỉ train: điểm DO đảo chiều đơn lẻ không kèm biến đổi nhiệt độ hoặc pH bị loại (cờ 2).
-  3. Khoảng trống không quá 8 giờ và có số đo ở hai đầu: nội suy tuyến tính (cờ 1, giữ cờ 2 nếu đã có).
-     Khoảng trống dài hơn, hoặc chạm đầu, cuối tập: để NA (cờ 3).
-Cờ 0 là số đo thật, giữ nguyên văn chuỗi nguồn.
+Quy trình (dataset/LAM_SACH.md), nhân quả: mỗi ô chỉ phụ thuộc số đo tại chính nó và trước nó.
+  1. Giá trị ngoài miền vật lý RANGES bị loại, coi như ô trống.
+  2. Ô trống được điền bằng số đo hợp lệ gần nhất phía trước (ffill) nếu số đo đó cách không quá MAX_GAP mốc
+     (8 giờ); chuỗi chạy liền mạch qua ranh giới train, val, test vì tập sau được dùng quá khứ của tập trước.
+     Ô cách số đo gần nhất hơn MAX_GAP mốc, hoặc chưa có số đo nào trước nó, để NA.
+Cờ: 0 số đo thật (chép nguyên văn chuỗi nguồn); 1 ô được điền (chép nguyên văn chuỗi của số đo nguồn); -1 ô NA.
 Chạy từ gốc repo: uv run python scripts/build_base_splits.py
 """
 import csv
 import os
 
 import numpy as np
+import pandas as pd
 
-from common import BASE, FEATURES, FLAGS, MAX_GAP, NAMES, RANGES, read_raw_split
-
-SPIKE_MG_L = 0.8          # bước vào và bước ra tối thiểu của điểm DO đảo chiều, mg/L
-COMOVE_TEMP_C = 0.3       # nhiệt độ đổi cùng mốc từ 0.3 độ C: khối nước khác đi qua, là hiện tượng thật
-COMOVE_PH = 0.05          # tương tự, ngưỡng thay đổi pH cùng mốc
-OBSERVED, INTERP, REJECTED, LONG_GAP = 0, 1, 2, 3
+from common import BASE, FEATURES, FILLED, FLAGS, MAX_GAP, MISSING, NAMES, OBSERVED, RANGES, read_raw_split
 
 
-def do_spikes(X):
-    """Chỉ số các mốc DO lệch quá SPIKE_MG_L so với cả hai mốc kề, cùng chiều lệch (đỉnh hoặc đáy nhọn),
-    và không có thay đổi nhiệt độ hoặc pH đi kèm."""
-    do, tc, ph = X[:, 0], X[:, 1], X[:, 2]
-    i, o = do[1:-1] - do[:-2], do[1:-1] - do[2:]
-    rev = (np.abs(i) > SPIKE_MG_L) & (np.abs(o) > SPIKE_MG_L) & (i * o > 0)
-    comove = (np.abs(tc[1:-1] - tc[:-2]) >= COMOVE_TEMP_C) | (np.abs(ph[1:-1] - ph[:-2]) >= COMOVE_PH + 1e-9)
-    return np.flatnonzero(rev & ~comove) + 1
-
-
-def runs(mask):
-    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp trong mảng boolean."""
-    d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
-    s = np.flatnonzero(d == 1)
-    return s, np.flatnonzero(d == -1) - s
-
-
-def clean(X, is_train):
-    """Làm sạch một tập (mảng n x 6, NaN là trống) theo ba bước ở đầu file; trả về (giá trị, cờ)."""
-    X = X.copy()
-    flag = np.where(np.isnan(X), INTERP, OBSERVED).astype(np.int8)
-    for j, c in enumerate(FEATURES):
-        lo, hi = RANGES[c]
-        bad = (X[:, j] < lo) | (X[:, j] > hi)
-        X[bad, j], flag[bad, j] = np.nan, REJECTED
-    if is_train:
-        k = do_spikes(X)
-        X[k, 0], flag[k, 0] = np.nan, REJECTED
-    n = len(X)
-    for j in range(X.shape[1]):
-        for a, ln in zip(*runs(np.isnan(X[:, j]))):
-            if ln <= MAX_GAP and a > 0 and a + ln < n:
-                X[a:a + ln, j] = np.interp(np.arange(a, a + ln), [a - 1, a + ln], [X[a - 1, j], X[a + ln, j]])
-            else:
-                flag[a:a + ln, j] = LONG_GAP
-    return X, flag
+def source_index(valid):
+    """Với mỗi ô: chỉ số của số đo hợp lệ gần nhất phía trước trong vòng MAX_GAP mốc (chính nó nếu hợp lệ), -1 nếu không có."""
+    idx = pd.Series(np.where(valid, np.arange(len(valid)), np.nan)).ffill(limit=MAX_GAP)
+    return idx.fillna(-1).to_numpy(int)
 
 
 def main():
-    """Ghi ba file base_splits/; ô cờ 0 chép nguyên chuỗi nguồn, ô cờ 1, 2 làm tròn 4 chữ số, ô cờ 3 ghi NA."""
+    """Làm sạch chuỗi nối ba tập, ghi ba file base_splits/ và in số ô theo cờ."""
     os.makedirs(BASE, exist_ok=True)
-    for name in NAMES:
-        rows = read_raw_split(name)
-        raw = [v for _, v in rows]
-        X = np.array([[np.nan if s == "NA" else float(s) for s in v] for v in raw])
-        Y, flag = clean(X, name == "train")
+    parts = [read_raw_split(n) for n in NAMES]
+    rows = [r for p in parts for r in p]
+    S = np.array([v for _, v in rows], dtype=object)            # chuỗi nguyên văn, n x 6
+    out, flag = np.full(S.shape, "NA", dtype=object), np.zeros(S.shape, np.int8)
+    for j, c in enumerate(FEATURES):
+        lo, hi = RANGES[c]
+        valid = np.array([s != "NA" and lo <= float(s) <= hi for s in S[:, j]])
+        src = source_index(valid)
+        ok = src >= 0
+        out[ok, j] = S[src[ok], j]
+        flag[:, j] = np.where(valid, OBSERVED, np.where(ok, FILLED, MISSING))
+    a = 0
+    for name, p in zip(NAMES, parts):
+        b = a + len(p)
         with open(os.path.join(BASE, f"{name}.csv"), "w", newline="") as f:
             w = csv.writer(f, lineterminator="\n")
             w.writerow(["datetime_pst"] + FEATURES + FLAGS)
-            for (t, v), y, fl in zip(rows, Y, flag):
-                vals = [v[j] if fl[j] == OBSERVED else ("NA" if fl[j] == LONG_GAP else repr(round(float(y[j]), 4)))
-                        for j in range(len(FEATURES))]
-                w.writerow([t] + vals + [int(x) for x in fl])
-        cnt = {k: int((flag == k).sum()) for k in (INTERP, REJECTED, LONG_GAP)}
-        print(f"{name}: {len(rows)} dòng | nội suy {cnt[INTERP]} | loại rồi điền {cnt[REJECTED]} | trống dài {cnt[LONG_GAP]}")
+            for (t, _), v, fl in zip(p, out[a:b], flag[a:b]):
+                w.writerow([t] + list(v) + [int(x) for x in fl])
+        fl = flag[a:b]
+        print(f"{name}: {b - a} dòng | điền {int((fl == FILLED).sum())} | để trống {int((fl == MISSING).sum())}")
+        a = b
 
 
 if __name__ == "__main__":

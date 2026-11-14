@@ -1,99 +1,27 @@
-"""Căn cứ chọn ngưỡng 8 giờ giữa khoảng trống được nội suy và khoảng trống bị cắt (dataset/LAM_SACH.md mục 5.2, 5.4).
+"""Căn cứ chọn ngưỡng điền 8 giờ (dataset/LAM_SACH.md mục 4.1, 4.3, 4.5).
 Chạy từ gốc repo: uv run python scripts/gap_threshold_study.py
 
-Phần 0. Bảng tần suất độ dài khoảng trống thật (mọi biến, cả ba tập): gap_length_histogram.csv.
-Phần 1. Điểm chuyển: nội suy tuyến tính còn tốt nhất đến độ dài nào?
-  Trên toàn bộ train, xóa nhân tạo cả 6 biến cùng lúc (như khi đầu đo ngừng ghi) với độ dài 3 đến 16 giờ,
-  so nội suy tuyến tính với các cách điền theo nhịp ngày đêm. Khoảng tin cậy 95% của chênh lệch MAE bằng lấy mẫu lại
-  (bootstrap, 4000 lần) theo từng khoảng trống. Ghi threshold_crossover.csv.
-Phần 2. Độ nhạy: nếu đổi ngưỡng T, số khoảng trống dài và số cửa sổ bị cắt thay đổi thế nào?
-  Cắt mọi cửa sổ (đầu vào và nhãn) chạm vào khoảng trống dài hơn T của bất kỳ biến nào. Ghi threshold_sensitivity.csv.
+Phần 0. Tần suất độ dài khoảng trống thật (mọi biến, cả ba tập): gap_length_histogram.csv và biểu đồ .png.
+Phần 1. Độ nhạy theo ngưỡng T, với quy tắc nhân quả của build_base_splits: ô cách số đo hợp lệ gần nhất phía trước
+  hơn T giờ thì để trống; cửa sổ chạm ô trống, hoặc có nhãn không còn mốc DO đo thật, bị bỏ. T = 0 là không điền
+  ô nào. Ghi threshold_sensitivity.csv (số ô để trống, số cửa sổ bị bỏ theo tập và cấu hình).
+Phần 2. Đợt DO thấp bị mất khỏi đánh giá với base_splits: một đợt bị mất khi không mốc nào của nó nằm trong nhãn
+  của cửa sổ được giữ. Ghi episode_coverage.csv.
 """
 import os
 
-import numpy as np
-import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 
-from common import STATS as OUT, load_raw_split
-from imputation_benchmark import F, fill_simple
+from common import (CONFIGS, FEATURES as F, NAMES, RANGES, STATS as OUT, load_base_all, load_raw_split, runs,  # noqa: E402
+                    window_starts)
 
-NAMES = ["train", "val", "test"]
-# độ dài khoảng trống thử ở phần 1 (giờ), số khoảng mỗi độ dài; các cách điền so với nội suy tuyến tính
-LENS_H = [3, 4, 5, 6, 7, 8, 9, 10, 12, 16]
-N_GAPS = 400
-ALT = ["hom_qua_offset_2_dau", "cung_gio_hom_qua", "hom_qua_offset_1_dau", "giu_so_truoc", "pchip"]
-# các ngưỡng T thử ở phần 2 (giờ)
-THRESH_H = [2, 4, 6, 7.75, 8, 10, 12, 16, 20, 21]
-CONFIGS = {"24h_6h": (96, 24), "7d_24h": (672, 96)}
-rng = np.random.default_rng(20261113)
-
-
-def runs(m):
-    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp."""
-    d = np.diff(np.concatenate([[0], np.asarray(m, int), [0]]))
-    s = np.flatnonzero(d == 1)
-    return s, np.flatnonzero(d == -1) - s
-
-
-def part1(X):
-    """Phần 1 trên mảng train X (n x 6): mỗi biến, mỗi độ dài, so MAE nội suy tuyến tính với cách khác tốt nhất."""
-    n = len(X)
-    cs = np.concatenate([[0], np.cumsum(np.isnan(X).any(1))])
-    rows = []
-    for h in LENS_H:
-        L = int(h * 4)
-        cand = np.arange(300, n - L - 20)
-        cand = cand[(cs[cand + L + 10] - cs[cand - 300]) == 0]
-        used = np.zeros(n, bool)
-        st = []
-        for a in rng.permutation(cand):
-            if not used[a - 1:a + L + 1].any():
-                used[a - 1:a + L + 1] = True
-                st.append(a)
-                if len(st) == N_GAPS:
-                    break
-        for j, c in enumerate(F):
-            v = X[:, j]
-            sd = np.nanstd(v)
-            err = {m: np.array([np.abs(fill_simple(v, a, L, m) - v[a:a + L]).mean() for a in st])
-                   for m in ["noi_thang"] + ALT}
-            best_alt = min(ALT, key=lambda m: err[m].mean())
-            dlt = err[best_alt] - err["noi_thang"]          # dương: nội suy tuyến tính tốt hơn
-            bs = np.array([rng.choice(dlt, len(dlt)).mean() for _ in range(4000)])
-            lo, hi = np.quantile(bs, [0.025, 0.975])
-            verdict = "noi thang tot hon" if lo > 0 else ("cach khac tot hon" if hi < 0 else "ngang nhau")
-            rows.append(dict(bien=c, gio=h, so_khoang=len(st), MAE_noi_thang=err["noi_thang"].mean(),
-                             cach_khac_tot_nhat=best_alt, MAE_cach_khac=err[best_alt].mean(),
-                             chenh=dlt.mean(), tin_cay_duoi=lo, tin_cay_tren=hi, ket_luan=verdict,
-                             pct_sd_noi_thang=100 * err["noi_thang"].mean() / sd))
-    return pd.DataFrame(rows)
-
-
-def part2():
-    """Phần 2 trên cả ba tập nguồn: số khoảng trống dài và số cửa sổ bị cắt theo từng ngưỡng; kèm độ dài các khoảng trên 2 giờ."""
-    S = [load_raw_split(n) for n in NAMES]
-    X = pd.concat(S, ignore_index=True)[F].to_numpy(float)
-    n_all = len(X)
-    offs = np.cumsum([0] + [len(s) for s in S])
-    gaps = [(j, a + offs[si], l) for si in range(3) for j in range(6)
-            for a, l in zip(*runs(np.isnan(X[offs[si]:offs[si + 1], j])))]
-    cl = np.concatenate([[0], np.cumsum(np.isnan(X[:, 0]))])
-    rows = []
-    for T in THRESH_H:
-        long_gaps = [(j, a, l) for j, a, l in gaps if l > T * 4]
-        for cfg, (lin, lout) in CONFIGS.items():
-            bad = np.zeros(n_all + 1, bool)
-            for j, a, l in long_gaps:
-                bad[max(a - lout + 1, 0):min(a + l + lin, n_all)] = True   # đầu vào [t - lin, t) chạm [a, a + l) khi t <= a + l + lin - 1
-            r = dict(nguong_gio=T, cau_hinh=cfg, so_khoang_dai=len(long_gaps))
-            for si, nm in enumerate(NAMES):
-                t = np.arange(max(offs[si], lin), offs[si + 1] - lout + 1)
-                ok = ((cl[t + lout] - cl[t]) < lout) & ~bad[t]
-                r[f"cat_{nm}"] = int((~ok).sum())
-                r[f"pct_{nm}"] = round(100 * (~ok).mean(), 2)
-            rows.append(r)
-    lens = pd.DataFrame([dict(bien=F[j], gio=l / 4) for j, a, l in gaps if l > 8]).sort_values("gio")
-    return pd.DataFrame(rows), lens
+THRESH_H = [0, 4, 6, 7.75, 8, 12, 21]                  # ngưỡng thử ở phần 1, giờ; 0 là không điền
+EPISODE_MG_L = [6, 5]                                  # ngưỡng đợt DO thấp, mg/L
+MIN_STEPS = MERGE_STEPS = 4                            # đợt dài ít nhất 1 giờ; gộp hai đoạn cách nhau không quá 1 giờ
 
 
 def histogram():
@@ -115,21 +43,120 @@ def histogram():
     return pd.DataFrame(rows)
 
 
+def figure(h, path):
+    """Biểu đồ cột (thang log) của bảng tần suất h, kèm đường ngưỡng 8 giờ; lưu PNG."""
+    ink, ink2, surf, bar = "#0b0b0b", "#52514e", "#fcfcfb", "#2a78d6"
+    labels = ["15 phút", "30 phút\nđến 1 giờ", "1 đến 2\ngiờ", "2 đến 4\ngiờ", "4 đến 8\ngiờ",
+              "8 đến 16\ngiờ", "16 đến 24\ngiờ", "24 đến 48\ngiờ", "trên 48\ngiờ"]
+    k = h["so_khoang"]
+    fig, ax = plt.subplots(figsize=(9, 4.2), dpi=150)
+    fig.patch.set_facecolor(surf)
+    ax.set_facecolor(surf)
+    ax.bar(range(len(h)), k.where(k > 0, 0.0001), width=0.62, color=bar, edgecolor=surf, linewidth=2)
+    ax.set_yscale("log")
+    ax.set_ylim(0.7, 25000)
+    ax.set_yticks([1, 10, 100, 1000], ["1", "10", "100", "1000"])
+    ax.minorticks_off()
+    for i, n in enumerate(k):
+        ax.text(i, max(n, 0.8) * 1.15, str(n), ha="center", va="bottom", fontsize=9, color=ink)
+    ax.axvline(4.5, color=ink2, linestyle=(0, (4, 3)), linewidth=1.2)
+    ax.text(4.6, 1200, "ngưỡng 8 giờ", color=ink2, fontsize=9, ha="left", va="center")
+    ax.text(2.3, 20000, "không quá 8 giờ: 99.45%, điền bằng số đo trước", color=ink2, fontsize=9, ha="center", va="top")
+    ax.text(7.0, 20000, "dài hơn 8 giờ: 3 sự kiện, để trống sau 8 giờ đầu", color=ink2, fontsize=9, ha="center", va="top")
+    ax.set_xticks(range(len(h)), labels, fontsize=8.5, color=ink2)
+    ax.set_ylabel("Số khoảng trống (thang log)", fontsize=9, color=ink2)
+    ax.set_title(f"Độ dài khoảng trống trong dataset RRI ({k.sum()} khoảng, 6 biến, cả ba tập)", fontsize=10.5,
+                 color=ink, loc="left", pad=12)
+    for side in ["top", "right"]:
+        ax.spines[side].set_visible(False)
+    for side in ["left", "bottom"]:
+        ax.spines[side].set_color("#c9c8c3")
+    ax.tick_params(axis="y", colors=ink2, labelsize=8.5)
+    ax.yaxis.grid(True, color="#e6e5e0", linewidth=0.8)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    fig.savefig(path, facecolor=surf)
+
+
+def steps_since_valid(X):
+    """(số mốc từ số đo hợp lệ gần nhất phía trước, mặt nạ số đo hợp lệ) cho từng ô của X (n x 6).
+
+    Hợp lệ là khác NaN và nằm trong RANGES; khoảng cách bằng 0 tại số đo hợp lệ, vô cùng nếu chưa có số đo nào.
+    """
+    lo, hi = np.array([RANGES[c] for c in F]).T
+    valid = (X >= lo) & (X <= hi)                      # so sánh với NaN cho False
+    i = np.arange(len(X))[:, None]
+    last = np.maximum.accumulate(np.where(valid, i, -1), axis=0)
+    return np.where(last >= 0, i - last, np.inf), valid
+
+
+def sensitivity():
+    """Phần 1: số ô để trống và số cửa sổ bị bỏ theo ngưỡng T, cho từng cấu hình và tập."""
+    S = [load_raw_split(n) for n in NAMES]
+    X = pd.concat(S, ignore_index=True)[F].to_numpy(float)
+    offs = np.cumsum([0] + [len(s) for s in S])
+    dist, valid = steps_since_valid(X)
+    obs = np.concatenate([[0], np.cumsum(valid[:, 0])])
+    rows = []
+    for T in THRESH_H:
+        miss = dist > T * 4
+        cm = np.concatenate([[0], np.cumsum(miss.any(1))])
+        for cfg, (lin, lout) in CONFIGS.items():
+            r = dict(nguong_gio=T, cau_hinh=cfg, so_o_trong=int(miss.sum()))
+            for si, nm in enumerate(NAMES):
+                t = np.arange(max(offs[si], lin), offs[si + 1] - lout + 1)
+                ok = (cm[t + lout] - cm[t - lin] == 0) & (obs[t + lout] - obs[t] > 0)
+                r[f"cat_{nm}"] = int((~ok).sum())
+                r[f"pct_{nm}"] = round(100 * (~ok).mean(), 2)
+            rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def episode_spans(do, thr):
+    """Các đợt DO dưới thr: list (bắt đầu, kết thúc) theo chỉ số trong do; NaN coi như không dưới ngưỡng."""
+    b = np.nan_to_num(do, nan=np.inf) < thr
+    for a, ln in zip(*runs(~b)):
+        if 0 < a and a + ln < len(b) and ln <= MERGE_STEPS:
+            b[a:a + ln] = True
+    return [(a, a + ln) for a, ln in zip(*runs(b)) if ln >= MIN_STEPS]
+
+
+def episode_coverage():
+    """Phần 2: số đợt DO thấp của từng tập và số đợt không nằm trong nhãn của cửa sổ nào được giữ."""
+    d = load_base_all()
+    do = np.where(d["flag_do_mg_l"].to_numpy() == 0, d["do_mg_l"].to_numpy(), np.nan)
+    split = d["split"].to_numpy()
+    rows = []
+    for cfg, (lin, lout) in CONFIGS.items():
+        starts = window_starts(d, lin, lout)
+        for nm in NAMES:
+            idx = np.flatnonzero(split == nm)
+            cov = np.zeros(len(d) + 1, int)
+            np.add.at(cov, starts[nm], 1)
+            np.add.at(cov, starts[nm] + lout, -1)
+            covered = np.cumsum(cov)[:-1] > 0          # mốc nằm trong nhãn của ít nhất một cửa sổ được giữ
+            for thr in EPISODE_MG_L:
+                sp = [(a + idx[0], b + idx[0]) for a, b in episode_spans(do[idx], thr)]
+                lost = [a for a, b in sp if not covered[a:b].any()]
+                rows.append(dict(cau_hinh=cfg, tap=nm, nguong_mg_l=thr, so_dot=len(sp), so_dot_mat=len(lost),
+                                 dot_mat=" ".join(str(d["datetime_pst"][a])[:16] for a in lost)))
+    return pd.DataFrame(rows)
+
+
 def main():
-    """Chạy phần 0, 1, 2 và ghi ba bảng."""
+    """Chạy ba phần, ghi ba bảng và biểu đồ."""
     os.makedirs(OUT, exist_ok=True)
-    d = load_raw_split("train")
-    histogram().to_csv(os.path.join(OUT, "gap_length_histogram.csv"), index=False)
-    p1 = part1(d[F].to_numpy(float))
-    p1.round(4).to_csv(os.path.join(OUT, "threshold_crossover.csv"), index=False)
-    p2, lens = part2()
-    p2.to_csv(os.path.join(OUT, "threshold_sensitivity.csv"), index=False)
+    h = histogram()
+    h.to_csv(os.path.join(OUT, "gap_length_histogram.csv"), index=False)
+    figure(h, os.path.join(OUT, "gap_length_histogram.png"))
+    s = sensitivity()
+    s.to_csv(os.path.join(OUT, "threshold_sensitivity.csv"), index=False)
+    e = episode_coverage()
+    e.to_csv(os.path.join(OUT, "episode_coverage.csv"), index=False)
     pd.set_option("display.width", 250)
     pd.set_option("display.max_columns", 20)
-    print(p1[["bien", "gio", "MAE_noi_thang", "cach_khac_tot_nhat", "MAE_cach_khac", "chenh", "tin_cay_duoi",
-              "tin_cay_tren", "ket_luan"]].round(3).to_string(index=False))
-    print(p2.to_string(index=False))
-    print("Các khoảng trống thật dài hơn 2 giờ:", lens.gio.tolist())
+    print(s.to_string(index=False))
+    print(e.to_string(index=False))
 
 
 if __name__ == "__main__":

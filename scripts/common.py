@@ -1,7 +1,7 @@
 """Hằng số, đường dẫn và hàm đọc dữ liệu dùng chung cho dataset CEMP RRI.
 
-Phần khai báo và read_raw_split chỉ dùng thư viện chuẩn (cho verify_dataset.py); các hàm load_* cần pandas,
-window_starts cần numpy.
+Phần khai báo và read_raw_split chỉ dùng thư viện chuẩn (cho verify_dataset.py); các hàm còn lại import numpy,
+pandas, scikit-learn bên trong hàm nên verify_dataset.py không phụ thuộc các gói này.
 """
 import csv
 import os
@@ -27,7 +27,8 @@ NAMES = list(SPLITS)
 # miền vật lý chấp nhận [min, max], theo đơn vị của từng biến
 RANGES = {"do_mg_l": (0, 20), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
           "turbidity_fnu": (0, 1000), "chl_fluor_ug_l": (0, 200)}
-MAX_GAP = 32              # khoảng trống dài nhất được nội suy: 8 giờ = 32 mốc 15 phút
+MAX_GAP = 32              # ô được điền khi số đo gần nhất phía trước cách không quá 8 giờ = 32 mốc 15 phút
+OBSERVED, FILLED, MISSING = 0, 1, -1    # giá trị cờ: số đo thật, ô được điền bằng ffill, ô để NA
 # cấu hình dự báo: (độ dài đầu vào, độ dài nhãn) tính bằng số mốc; 24h_6h là cấu hình chính
 CONFIGS = {"24h_6h": (96, 24), "7d_24h": (672, 96)}
 
@@ -45,6 +46,14 @@ def read_raw_split(name):
     return tuple(out)
 
 
+def runs(mask):
+    """Vị trí bắt đầu và độ dài các đoạn True liên tiếp trong mảng boolean (cần numpy)."""
+    import numpy as np
+    d = np.diff(np.concatenate([[0], np.asarray(mask, bool).astype(np.int8), [0]]))
+    s = np.flatnonzero(d == 1)
+    return s, np.flatnonzero(d == -1) - s
+
+
 def load_raw_split(name):
     """Một tập chưa làm sạch dạng DataFrame: datetime_pst (datetime64) và 6 biến (float, NaN là trống)."""
     import pandas as pd
@@ -55,7 +64,7 @@ def load_raw_split(name):
 
 
 def load_base_split(name):
-    """Một tập đã làm sạch trong base_splits/: 6 biến (float, NaN ở ô cờ 3) và 6 cột cờ (int8, 0 đến 3)."""
+    """Một tập đã làm sạch trong base_splits/: 6 biến (float, NaN ở ô cờ -1) và 6 cột cờ (int8: 0, 1, -1)."""
     import pandas as pd
     return pd.read_csv(os.path.join(BASE, f"{name}.csv"), na_values=["NA"], parse_dates=["datetime_pst"],
                        dtype={f: "int8" for f in FLAGS})
@@ -71,18 +80,33 @@ def window_starts(d, n_in, n_out):
     """Thời điểm dự báo hợp lệ của từng tập: {tên tập: mảng chỉ số dòng t trong d = load_base_all()}.
 
     Cửa sổ t: đầu vào [t - n_in, t), nhãn [t, t + n_out). Nhãn nằm trọn trong tập; đầu vào được lấy dữ liệu cuối
-    của tập liền trước. Giữ cửa sổ khi đầu vào và nhãn không có ô cờ 3 và nhãn có ít nhất một mốc DO cờ 0.
+    của tập liền trước. Giữ cửa sổ khi đầu vào và nhãn không có ô cờ -1 và nhãn có ít nhất một mốc DO cờ 0.
     Đếm bằng tổng tích lũy nên mỗi cửa sổ kiểm tra trong O(1).
     """
     import numpy as np
     fl = d[FLAGS].to_numpy()
-    long_gap = np.concatenate([[0], np.cumsum((fl == 3).any(axis=1))])
-    observed = np.concatenate([[0], np.cumsum(fl[:, 0] == 0)])
+    missing = np.concatenate([[0], np.cumsum((fl == MISSING).any(axis=1))])
+    observed = np.concatenate([[0], np.cumsum(fl[:, 0] == OBSERVED)])
     split = d["split"].to_numpy()
     out = {}
     for n in NAMES:
         idx = np.flatnonzero(split == n)
         t = np.arange(max(idx[0], n_in), idx[-1] + 2 - n_out)
-        ok = (long_gap[t + n_out] - long_gap[t - n_in] == 0) & (observed[t + n_out] - observed[t] > 0)
+        ok = (missing[t + n_out] - missing[t - n_in] == 0) & (observed[t + n_out] - observed[t] > 0)
         out[n] = t[ok]
     return out
+
+
+def fit_scaler(d, splits=("train",)):
+    """StandardScaler (trừ trung bình, chia độ lệch chuẩn tổng thể) khớp trên 6 biến của các tập splits trong d.
+
+    Mặc định chỉ train (README mục 5.4); khi huấn luyện lại trên train và val để chấm test thì truyền ("train", "val").
+    NaN (ô cờ -1) được bỏ qua khi khớp và giữ nguyên khi biến đổi.
+    """
+    from sklearn.preprocessing import StandardScaler
+    return StandardScaler().fit(d.loc[d["split"].isin(splits), FEATURES].to_numpy())
+
+
+def inverse_do(scaler, z):
+    """Đổi DO đã chuẩn hóa (mảng bất kỳ hình dạng) về mg/L; DO là cột 0 của FEATURES."""
+    return z * scaler.scale_[0] + scaler.mean_[0]
