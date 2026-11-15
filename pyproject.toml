@@ -1,7 +1,7 @@
 [project]
 name = "datn"
 version = "0.1.0"
-description = "Du bao oxy hoa tan (DO) nhieu buoc tai tram CEMP RRI"
+description = "Du bao oxy hoa tan (DO) nhieu buoc tai tram CEMP MSD"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.11.2",

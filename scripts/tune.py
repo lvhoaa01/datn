@@ -1,8 +1,11 @@
 """Dò siêu tham số trên val: chạy lưới cấu hình, mỗi cấu hình nhiều seed, rồi tổng hợp trung bình và độ lệch chuẩn.
 
 Mỗi lần chạy là một lần train.py bình thường (một thư mục trong artifacts/runs/). Run nào đã có thư mục với đúng
-các tham số thì được dùng lại, không chạy lại (cùng seed cho kết quả trùng bit trên cùng máy). Test không được chấm.
-Kết quả: artifacts/runs/tuning_<mô hình>_<cấu hình>.csv, mỗi dòng một cấu hình, xếp theo MAE trung bình tăng dần.
+các tham số và cùng dữ liệu (mã băm base_splits trong config.json trùng common.data_fingerprint()) thì được dùng lại,
+không chạy lại (cùng seed cho kết quả trùng bit trên cùng máy); run học trên dữ liệu cũ không bao giờ được dùng lại.
+Test không được chấm.
+Kết quả: artifacts/runs/tuning_<mô hình>_<cấu hình>.csv, mỗi dòng một cấu hình, xếp theo MAE trung bình tăng dần;
+MAE_buoc_dau_tb, MAE_buoc_cuoi_tb là MAE ở bước nhãn đầu (15 phút) và bước cuối (6 giờ hoặc 24 giờ tùy cấu hình).
 Chạy từ gốc repo: uv run python scripts/tune.py --model lstm --cfg 24h_6h
 """
 import argparse
@@ -13,6 +16,7 @@ import os
 
 import pandas as pd
 
+from common import data_fingerprint
 from train import RUNS, build_parser, train
 
 # lưới dò: tốc độ học, số nơ-ron ẩn, dropout giữa hai lớp hồi quy
@@ -21,8 +25,8 @@ SEEDS = [0, 1, 2]
 
 
 def find_run(args):
-    """Thư mục run có config khớp mọi tham số của args, hoặc None nếu chưa có."""
-    want = vars(args)
+    """Thư mục run có config khớp mọi tham số của args và học trên dữ liệu hiện tại, hoặc None nếu chưa có."""
+    want = dict(vars(args), du_lieu_sha256=data_fingerprint())
     for path in sorted(glob.glob(os.path.join(RUNS, "*", "config.json"))):
         cfg = json.load(open(path))
         if all(cfg.get(k) == v for k, v in want.items()) and os.path.exists(os.path.join(os.path.dirname(path),
@@ -55,14 +59,15 @@ def main():
             n_params = json.load(open(os.path.join(out, "config.json")))["n_params"]
             rows.append(dict(combo, seed=seed, run=os.path.basename(out), n_params=n_params,
                              best_epoch=m["best_epoch"], MAE=m["val"]["MAE"], RMSE=m["val"]["RMSE"], R2=m["val"]["R2"],
-                             MAE_15min=m["val"]["MAE_theo_buoc"][0], MAE_6h=m["val"]["MAE_theo_buoc"][-1]))
+                             MAE_buoc_dau=m["val"]["MAE_theo_buoc"][0], MAE_buoc_cuoi=m["val"]["MAE_theo_buoc"][-1]))
     df = pd.DataFrame(rows)
     keys = list(GRID)
     g = df.groupby(keys)
     summary = pd.concat([g["n_params"].first(),
                          g["MAE"].mean().rename("MAE_tb"), g["MAE"].std().rename("MAE_sd"),
                          g["RMSE"].mean().rename("RMSE_tb"), g["R2"].mean().rename("R2_tb"),
-                         g["MAE_15min"].mean().rename("MAE_15min_tb"), g["MAE_6h"].mean().rename("MAE_6h_tb"),
+                         g["MAE_buoc_dau"].mean().rename("MAE_buoc_dau_tb"),
+                         g["MAE_buoc_cuoi"].mean().rename("MAE_buoc_cuoi_tb"),
                          g["best_epoch"].apply(lambda s: "/".join(map(str, s))).rename("epoch_tot_nhat"),
                          g["run"].apply(";".join).rename("runs")], axis=1).reset_index()
     summary = summary.sort_values("MAE_tb").round(4)

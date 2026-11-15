@@ -2,13 +2,14 @@
 
 Kiểm tra:
   1. SHA-256 của các file theo dõi (dataset/, scripts/, artifacts/dataset/) khớp manifest.
-  2. File nguồn: đúng số dòng, lưới 15 phút đều, không trùng mốc.
+  2. File nguồn: kích thước và MD5 khớp metadata EDI (cemp_edi_1177_9_eml.xml), đúng số dòng, lưới 15 phút đều,
+     không trùng mốc.
   3. base_splits: đúng tiêu đề, khoảng thời gian, số dòng; lưới 15 phút liên tục; ba tập nối tiếp, không chồng lấn.
   4. Từng ô so với nguồn, trên chuỗi nối ba tập: số đo hợp lệ (khác NA, trong miền RANGES) có cờ 0 và trùng
-     nguyên văn; ô còn lại có cờ 1 và trùng nguyên văn số đo hợp lệ gần nhất phía trước nếu số đo đó cách không quá
-     MAX_GAP mốc, ngược lại có cờ -1 và ghi NA.
-  5. Số ô cờ 1 và cờ -1 của từng tập khớp FLAG_COUNTS (dataset/LAM_SACH.md mục 4.5).
-  6. Số cửa sổ bị bỏ khớp WINDOWS (dataset/README.md mục 5.2, dataset/LAM_SACH.md mục 4.5).
+     nguyên văn; ô còn lại có cờ 1 và trùng nguyên văn số đo hợp lệ gần nhất phía trước, hoặc cờ -1 và NA nếu chưa
+     có số đo nào phía trước.
+  5. Số ô cờ 1 và cờ -1 của từng tập khớp FLAG_COUNTS (dataset/LAM_SACH.md mục 4.4).
+  6. Số cửa sổ bị bỏ khớp WINDOWS (dataset/README.md mục 5.2, dataset/LAM_SACH.md mục 4.4).
 Chạy từ gốc repo: uv run python scripts/verify_dataset.py           (kiểm chứng)
                   uv run python scripts/verify_dataset.py --write   (ghi lại manifest)
 """
@@ -19,19 +20,21 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-from common import BASE, CONFIGS, FEATURES, FLAGS, FMT, MAX_GAP, NAMES, RANGES, RAW, REPO, SOURCE
+from common import BASE, CONFIGS, FEATURES, FLAGS, FMT, NAMES, RANGES, RAW, REPO, SOURCE
 
 MANIFEST = os.path.join(REPO, "dataset", "manifest_sha256.json")   # đường dẫn trong manifest tính từ gốc repo
 STEP = timedelta(minutes=15)
-RAW_ROWS = 631835
+RAW_ROWS = 631735
+# kích thước (byte) và MD5 của file MSD ghi trong metadata EDI edi.1177.9
+RAW_BYTES, RAW_MD5 = 33877088, "9b3482d7f375014273bac0088a8d95d8"
 EXPECTED = {"train": ("2019-01-01 00:00:00", "2024-05-31 23:45:00", 189888),
             "val": ("2024-06-01 00:00:00", "2025-02-28 23:45:00", 26208),
             "test": ("2025-03-01 00:00:00", "2025-11-30 23:45:00", 26400)}
-FLAG_COUNTS = {"train": {1: 2457, -1: 0}, "val": {1: 529, -1: 683}, "test": {1: 363, -1: 396}}
+FLAG_COUNTS = {"train": {1: 4098, -1: 0}, "val": {1: 212, -1: 0}, "test": {1: 107, -1: 0}}
 # cấu hình: {tập: (số cửa sổ có thể tạo, số cửa sổ bị bỏ)}, khớp README mục 5.2
-WINDOWS = {"24h_6h": {"train": (189769, 0), "val": (26185, 665), "test": (26377, 194)},
-           "7d_24h": {"train": (189121, 0), "val": (26113, 1952), "test": (26305, 833)}}
-FIXED = ["dataset/raw/cemp_RRI_2007_2025_source.csv", "dataset/metadata/cemp_station_metadata.csv",
+WINDOWS = {"24h_6h": {"train": (189769, 424), "val": (26185, 0), "test": (26377, 0)},
+           "7d_24h": {"train": (189121, 225), "val": (26113, 0), "test": (26305, 0)}}
+FIXED = ["dataset/raw/cemp_MSD_2007_2025_source.csv", "dataset/metadata/cemp_station_metadata.csv",
          "dataset/metadata/cemp_edi_1177_9_eml.xml", "dataset/README.md", "dataset/LAM_SACH.md"]
 
 errors = []
@@ -53,9 +56,9 @@ def tracked():
     return files
 
 
-def sha256(path):
-    """Mã SHA-256 của một file, đường dẫn tính từ gốc repo."""
-    h = hashlib.sha256()
+def sha256(path, algo="sha256"):
+    """Mã băm (mặc định SHA-256) của một file, đường dẫn tính từ gốc repo."""
+    h = hashlib.new(algo)
     with open(os.path.join(REPO, path), "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
@@ -86,14 +89,14 @@ def check_cells(splits, raw):
     flags = [f for s in splits for f in s[2]]
     for j, c in enumerate(FEATURES):
         lo, hi = RANGES[c]
-        last = None                                 # chỉ số dòng của số đo hợp lệ gần nhất
+        last = None                                 # chuỗi nguyên văn của số đo hợp lệ gần nhất
         for i, t in enumerate(times):
             s, x, k = raw[t][SOURCE[c]], vals[i][j], flags[i][j]
             if s != "NA" and lo <= float(s) <= hi:
                 check(k == 0 and x == s, f"{t} {c}: observed raw {s}, got {x} flag {k}")
-                last = i
-            elif last is not None and i - last <= MAX_GAP:
-                check(k == 1 and x == vals[last][j], f"{t} {c}: expected ffill {vals[last][j]}, got {x} flag {k}")
+                last = s
+            elif last is not None:
+                check(k == 1 and x == last, f"{t} {c}: expected ffill {last}, got {x} flag {k}")
             else:
                 check(k == -1 and x == "NA", f"{t} {c}: expected NA, got {x} flag {k}")
     for name, s in zip(NAMES, splits):
@@ -136,6 +139,8 @@ def main():
     for p, m in man.items():
         check(os.path.exists(os.path.join(REPO, p)) and sha256(p) == m["sha256"], f"sha256 mismatch: {p}")
     print(f"[1] sha256: {len(man)} files checked")
+    check(os.path.getsize(RAW) == RAW_BYTES, f"raw bytes {os.path.getsize(RAW)} != {RAW_BYTES}")
+    check(sha256(os.path.relpath(RAW, REPO), "md5") == RAW_MD5, "raw MD5 differs from EDI metadata")
     raw, prev = {}, None
     with open(RAW, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
@@ -146,7 +151,7 @@ def main():
                 check(dt - prev == STEP, f"raw step error {prev} -> {dt}")
             raw[t], prev = row, dt
     check(len(raw) == RAW_ROWS, f"raw rows {len(raw)} != {RAW_ROWS}")
-    print(f"[2] raw: {len(raw)} rows")
+    print(f"[2] raw: {len(raw)} rows, {RAW_BYTES} bytes, MD5 khớp metadata EDI")
     n_err = len(errors)
     splits = [check_split(n) for n in NAMES]
     for s1, s2 in zip(splits, splits[1:]):

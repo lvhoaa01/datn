@@ -5,7 +5,7 @@ __pycache__/
 *.pyc
 .venv/
 
-# Ung vien dataset va audit (tam thoi, 558 MB)
+# Ung vien dataset, du lieu nguon cac tram va audit (chi luu tren may, khoang 5.4 GB)
 candidate_dataset/
 
 # Checkpoint mo hinh (lon); config, history, metrics van duoc commit

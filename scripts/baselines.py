@@ -12,9 +12,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from common import CONFIGS, NAMES, STATS as OUT, load_base_all, metrics, window_starts
-
-DAY = 96                  # số mốc 15 phút trong một ngày
+from common import CONFIGS, DAY, NAMES, STATS as OUT, load_base_all, metrics, window_starts
 
 
 def main():

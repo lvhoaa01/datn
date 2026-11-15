@@ -1,15 +1,16 @@
-"""Hằng số, đường dẫn và hàm đọc dữ liệu dùng chung cho dataset CEMP RRI.
+"""Hằng số, đường dẫn và hàm đọc dữ liệu dùng chung cho dataset CEMP MSD.
 
 Phần khai báo và read_raw_split chỉ dùng thư viện chuẩn (cho verify_dataset.py); các hàm còn lại import numpy,
 pandas, scikit-learn bên trong hàm nên verify_dataset.py không phụ thuộc các gói này.
 """
 import csv
+import hashlib
 import os
 from functools import lru_cache
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATASET = os.path.join(REPO, "dataset")
-RAW = os.path.join(DATASET, "raw", "cemp_RRI_2007_2025_source.csv")
+RAW = os.path.join(DATASET, "raw", "cemp_MSD_2007_2025_source.csv")
 BASE = os.path.join(DATASET, "base_splits")
 STATS = os.path.join(REPO, "artifacts", "dataset")   # thống kê và hình của dataset
 FMT = "%Y-%m-%d %H:%M:%S"
@@ -27,8 +28,8 @@ NAMES = list(SPLITS)
 # miền vật lý chấp nhận [min, max], theo đơn vị của từng biến
 RANGES = {"do_mg_l": (0, 20), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
           "turbidity_fnu": (0, 1000), "chl_fluor_ug_l": (0, 200)}
-MAX_GAP = 32              # ô được điền khi số đo gần nhất phía trước cách không quá 8 giờ = 32 mốc 15 phút
-OBSERVED, FILLED, MISSING = 0, 1, -1    # giá trị cờ: số đo thật, ô được điền bằng ffill, ô để NA
+DAY = 96                  # số mốc 15 phút trong một ngày
+OBSERVED, FILLED, MISSING = 0, 1, -1    # giá trị cờ: số đo thật, ô điền bằng ffill, ô NA (chưa có số đo nào phía trước)
 # cấu hình dự báo: (độ dài đầu vào, độ dài nhãn) tính bằng số mốc; 24h_6h là cấu hình chính
 CONFIGS = {"24h_6h": (96, 24), "7d_24h": (672, 96)}
 
@@ -61,6 +62,16 @@ def load_raw_split(name):
     d = pd.DataFrame([v for _, v in rows], columns=FEATURES).replace("NA", None).astype(float)
     d.insert(0, "datetime_pst", pd.to_datetime([t for t, _ in rows], format=FMT))
     return d
+
+
+def data_fingerprint():
+    """Mã SHA-256 (16 ký tự đầu) của ba file base_splits; run huấn luyện ghi mã này để biết đã học trên dữ liệu nào."""
+    h = hashlib.sha256()
+    for n in NAMES:
+        with open(os.path.join(BASE, f"{n}.csv"), "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    return h.hexdigest()[:16]
 
 
 def load_base_split(name):

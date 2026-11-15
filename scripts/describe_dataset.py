@@ -1,14 +1,16 @@
 """Thống kê mô tả ba tập train, val, test trước làm sạch, dùng cho dataset/README.md mục 4.
 
-Ghi vào artifacts/dataset/: feature_stats (từng biến), gap_stats (khoảng trống theo dòng), long_gaps (khoảng trống
-dài hơn 8 giờ, theo biến), do_dynamics (DO theo tập), monthly_dynamics, split_by_regime (theo tháng, theo mùa).
+Ghi vào artifacts/dataset/: feature_stats (từng biến), gap_stats (khoảng trống theo dòng), do_dynamics (DO theo tập),
+monthly_dynamics, split_by_regime (theo tháng, theo mùa), yearly_quality (chất lượng từng năm của toàn file nguồn, gồm cả
+các năm ngoài ba tập: tỉ lệ dòng đủ sáu biến hợp lệ, số đợt trống từ một ngày trở lên khi gộp các biến, tổng số giờ của
+các đợt đó). Danh sách khoảng trống dài nằm ở gap_events.csv (scripts/gap_study.py).
 Chạy từ gốc repo: uv run python scripts/describe_dataset.py
 """
 import os
 import numpy as np
 import pandas as pd
 
-from common import FEATURES as F, MAX_GAP, NAMES, STATS as OUT, load_raw_split, runs
+from common import DAY, FEATURES as F, NAMES, RANGES, RAW, SOURCE, STATS as OUT, load_raw_split, runs
 
 STEP_H = 0.25             # một mốc = 0.25 giờ
 
@@ -49,6 +51,25 @@ def season(m):
             6: "nong", 7: "nong", 8: "nong", 9: "nong", 10: "thu"}[m]
 
 
+def yearly_quality():
+    """Bảng yearly_quality: theo năm của file nguồn, tỉ lệ dòng đủ sáu biến hợp lệ và các đợt trống từ một ngày trở lên."""
+    r = pd.read_csv(RAW, na_values=["NA"])
+    t = pd.to_datetime(r["date"] + " " + r["time"])
+    X = np.column_stack([r[SOURCE[c]].where(r[SOURCE[c]].between(*RANGES[c])).to_numpy(float) for c in F])
+    rows = []
+    for y in sorted(t.dt.year.unique()):
+        x = X[(t.dt.year == y).to_numpy()]
+        bad = np.zeros(len(x), bool)                   # ô thuộc khoảng trống từ một ngày của ít nhất một biến
+        for j in range(len(F)):
+            for a, l in zip(*runs(np.isnan(x[:, j]))):
+                if l >= DAY:
+                    bad[a:a + l] = True
+        st, ln = runs(bad)
+        rows.append(dict(nam=int(y), so_dong=len(x), du_6_bien_pct=round(100 * (~np.isnan(x)).all(1).mean(), 2),
+                         dot_trong_tu_1_ngay=len(ln), gio_cac_dot=float(ln.sum() * STEP_H)))
+    return pd.DataFrame(rows)
+
+
 def main():
     """Tính và ghi sáu bảng thống kê."""
     os.makedirs(OUT, exist_ok=True)
@@ -72,7 +93,7 @@ def main():
         st, ln = runs(allna)
         r = dict(split=n, rows=len(d), start=str(d.index[0]), end=str(d.index[-1]), days=round(len(d) / 96, 1),
                  rows_any_na=int(allna.sum()), pct_any_na=round(allna.mean() * 100, 3), na_runs=len(ln),
-                 na_runs_le_1h=int((ln <= 4).sum()), na_runs_gt_8h=int((ln > MAX_GAP).sum()),
+                 na_runs_le_1h=int((ln <= 4).sum()),
                  longest_na_run_h=float(ln.max() * STEP_H) if len(ln) else 0.0)
         for c in F:
             s_, l_ = runs(d[c].isna().to_numpy())
@@ -80,16 +101,6 @@ def main():
         rows.append(r)
     gs = pd.DataFrame(rows)
     gs.to_csv(os.path.join(OUT, "gap_stats.csv"), index=False)
-    # khoảng trống trong nguồn dài hơn MAX_GAP mốc, theo từng biến
-    long = []
-    for n in NAMES:
-        d = S[n]
-        for c in F:
-            s_, l_ = runs(d[c].isna().to_numpy())
-            for a, l in zip(s_, l_):
-                if l > MAX_GAP:
-                    long.append(dict(split=n, feature=c, start=str(d.index[a]), hours=l * STEP_H))
-    pd.DataFrame(long).to_csv(os.path.join(OUT, "long_gaps.csv"), index=False)
     # 3. DO: dao động ngày, độ bão hòa, đợt DO thấp, tương quan với các biến khác
     full = S["all"]
     rows = []
@@ -111,14 +122,15 @@ def main():
     # 4. theo tháng và theo giai đoạn mùa; độ khó là RMSE của cách giữ nguyên ở tầm 6 giờ (24 mốc)
     rows = []
     do = full["do_mg_l"]
-    day = do.resample("D"); dr = (day.max() - day.min())[day.count() >= 86]
+    day = do.resample("D")
+    dr = (day.max() - day.min())[day.count() >= 86]
     e6 = (do.shift(-24) - do)
+    months = sorted(set(full.index.strftime("%Y-%m")))       # các tháng có dữ liệu, dạng YYYY-MM
     for m in range(1, 13):
         sel = full.index.month == m
-        ep6 = sum(episodes((full.loc[f"{y}-{m:02d}", "do_mg_l"] < 6).fillna(False)) for y in sorted(set(full.index.year))
-                  if len(full.loc[f"{y}-{m:02d}"] if f"{y}-{m:02d}" in full.index.strftime("%Y-%m") else []))
-        ep5 = sum(episodes((full.loc[f"{y}-{m:02d}", "do_mg_l"] < 5).fillna(False)) for y in sorted(set(full.index.year))
-                  if f"{y}-{m:02d}" in set(full.index.strftime("%Y-%m")))
+        ym = [k for k in months if int(k[5:]) == m]
+        ep6 = sum(episodes((full.loc[k, "do_mg_l"] < 6).fillna(False)) for k in ym)
+        ep5 = sum(episodes((full.loc[k, "do_mg_l"] < 5).fillna(False)) for k in ym)
         rows.append(dict(month=m, regime=season(m), DO_mean=do[sel].mean(), DO_sd=do[sel].std(), DO_p05=do[sel].quantile(.05),
                          diel_range_median=dr[dr.index.month == m].median(), temp_mean=full.loc[sel, "water_temp_c"].mean(),
                          chl_mean=full.loc[sel, "chl_fluor_ug_l"].mean(), spc_mean=full.loc[sel, "spc_us_cm"].mean(),
@@ -138,6 +150,7 @@ def main():
                              rows=int(sel.sum()), DO_mean=do_.mean(), DO_sd=do_.std(),
                              persistence_6h_RMSE=np.sqrt((e**2).mean())))
     pd.DataFrame(rows).round(3).to_csv(os.path.join(OUT, "split_by_regime.csv"), index=False)
+    yearly_quality().to_csv(os.path.join(OUT, "yearly_quality.csv"), index=False)
     print("written to", OUT)
 
 

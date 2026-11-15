@@ -1,0 +1,4 @@
+tap,so_cua_so,so_cua_so_thay_tuong_lai,pct
+train,189345,758,0.4
+val,26185,187,0.71
+test,26377,78,0.3

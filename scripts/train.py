@@ -7,8 +7,8 @@ common.window_starts, cắt tại chỗ khi nạp, không lưu cửa sổ ra đ�
   y: (n_out,) DO đã chuẩn hóa của nhãn [t, t + n_out);
   m: (n_out,) True ở mốc nhãn có DO cờ 0; chỉ các mốc này được tính sai số và hàm mất mát.
 Mô hình: mạng hồi quy (LSTM hoặc GRU) đọc đầu vào, trạng thái ẩn ở mốc cuối qua một lớp tuyến tính ra thẳng n_out
-bước DO (dự báo trực tiếp). Huấn luyện trên train với AdamW, hàm mất mát MSE có mặt nạ, dừng sớm theo MAE (mg/L) trên val; test chưa
-được chấm ở đây (README mục 5.4: chỉ chấm một lần sau khi chọn xong cấu hình).
+bước DO (dự báo trực tiếp). Huấn luyện trên train với AdamW, hàm mất mát MSE có mặt nạ, dừng sớm theo MAE (mg/L)
+trên val; test chưa được chấm ở đây (README mục 5.4: chỉ chấm một lần sau khi chọn xong cấu hình).
 Mỗi lần chạy ghi artifacts/runs/<thời điểm>_<mô hình>_<cấu hình>/: config.json, history.csv, metrics.json và
 model.pt (trọng số kèm trung bình, độ lệch chuẩn của scaler).
 Chạy từ gốc repo: uv run python scripts/train.py --model lstm --cfg 24h_6h
@@ -28,13 +28,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from common import (CONFIGS, FEATURES, FILLED, FLAGS, NAMES, OBSERVED, REPO, fit_scaler, inverse_do, load_base_all,
-                    metrics, window_starts)
+from common import (CONFIGS, FEATURES, FILLED, FLAGS, NAMES, OBSERVED, REPO, data_fingerprint, fit_scaler, inverse_do,
+                    load_base_all, metrics, window_starts)
 
 RUNS = os.path.join(REPO, "artifacts", "runs")
 # số cửa sổ dùng được của từng tập, khớp README mục 5.2
-EXPECTED = {"24h_6h": {"train": 189769, "val": 25520, "test": 26183},
-            "7d_24h": {"train": 189121, "val": 24161, "test": 25472}}
+EXPECTED = {"24h_6h": {"train": 189345, "val": 26185, "test": 26377},
+            "7d_24h": {"train": 188896, "val": 26113, "test": 26305}}
 
 
 class WindowDataset(Dataset):
@@ -133,8 +133,12 @@ def train(args):
     out = os.path.join(RUNS, name)
     os.makedirs(out)
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
+    # True nếu lúc chạy có thay đổi chưa commit trong các file git theo dõi: kết quả không gắn trọn với commit trên
+    dirty = bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=REPO,
+                                capture_output=True, text=True).stdout.strip())
     config = dict(vars(args), n_in=n_in, n_out=n_out, n_params=sum(p.numel() for p in model.parameters()),
                   device=torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu", git_commit=commit,
+                  git_dirty=dirty, du_lieu_sha256=data_fingerprint(),
                   so_cua_so={n: len(dl.dataset) for n, dl in loaders.items()})
     json.dump(config, open(os.path.join(out, "config.json"), "w"), indent=1, ensure_ascii=False)
     print(f"{name}: {config['n_params']} tham số, {config['device']}")
@@ -173,13 +177,14 @@ def train(args):
 
 
 def check():
-    """Kiểm tra: train sau chuẩn hóa có trung bình 0, độ lệch chuẩn 1; phép ngược trả đúng mg/L; số cửa sổ khớp
+    """Kiểm tra: train sau chuẩn hóa có trung bình 0, độ lệch chuẩn 1 (bỏ qua ô NaN); phép ngược trả đúng mg/L; số cửa sổ khớp
     README; không cửa sổ nào chứa NaN; cột cờ chỉ gồm 0 và 1, khớp base_splits; nhãn của mọi cửa sổ có ít nhất một
     mốc DO cờ 0."""
     d = load_base_all()
     scaler = fit_scaler(d)
     Z = scaler.transform(d.loc[d["split"] == "train", FEATURES].to_numpy())
-    assert np.allclose(Z.mean(0), 0, atol=1e-9) and np.allclose(Z.std(0), 1, atol=1e-9)
+    # nanmean, nanstd: scaler bỏ qua ô NaN (cờ -1) nếu có
+    assert np.allclose(np.nanmean(Z, 0), 0, atol=1e-9) and np.allclose(np.nanstd(Z, 0), 1, atol=1e-9)
     do = d["do_mg_l"].to_numpy()
     assert np.allclose(inverse_do(scaler, scaler.transform(d[FEATURES].to_numpy())[:, 0]), do, equal_nan=True)
     for c, mu, sd in zip(FEATURES, scaler.mean_, scaler.scale_):
@@ -208,9 +213,10 @@ def build_parser():
     ap.add_argument("--check", action="store_true", help="kiểm tra phần dữ liệu")
     ap.add_argument("--model", default="lstm", choices=["lstm", "gru"])
     ap.add_argument("--cfg", default="24h_6h", choices=list(CONFIGS))
-    ap.add_argument("--hidden", type=int, default=64)
+    # mặc định là cấu hình chốt sau dò siêu tham số trên val (artifacts/runs/tuning_lstm_24h_6h.csv)
+    ap.add_argument("--hidden", type=int, default=128)
     ap.add_argument("--layers", type=int, default=2)
-    ap.add_argument("--dropout", type=float, default=0.1)
+    ap.add_argument("--dropout", type=float, default=0.3)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--weight_decay", type=float, default=1e-4)
     ap.add_argument("--batch", type=int, default=256)

@@ -1,0 +1,4 @@
+tap,so_diem,moc_DO_duoi_5,moc_DO_duoi_5_la_dot_bien,moc_DO_duoi_6,moc_DO_duoi_6_la_dot_bien,MAE_cung_gio_hom_qua,MAE_bo_moc_dot_bien
+train,63,15,1,185,1,0.2447,0.2443
+val,28,0,0,7,0,0.3285,0.3274
+test,121,9,8,34,17,0.4,0.394
