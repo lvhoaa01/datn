@@ -33,9 +33,11 @@ Mã nguồn và kết quả phân tích nằm ngoài thư mục dataset, ở g�
 | scripts/common.py | Hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ |
 | scripts/build_base_splits.py, scripts/verify_dataset.py | Tạo base_splits/ từ raw/; kiểm chứng dataset (mục 6) |
 | scripts/describe_dataset.py, scripts/baselines.py | Thống kê mô tả (mục 4); mức sai số tham chiếu (mục 5.3) |
-| scripts/train.py | Huấn luyện mô hình. Hiện có phần chuẩn hóa (trừ trung bình, chia độ lệch chuẩn, khớp trên train) và tạo cửa sổ theo mục 5.2, đầu vào gồm sáu biến và sáu cột cờ; kiểm tra bằng `uv run python scripts/train.py --check` |
+| scripts/train.py | Huấn luyện và đánh giá mô hình LSTM, GRU: dự báo trực tiếp DO cho các bước của nhãn, đầu vào gồm sáu biến đã chuẩn hóa và sáu cột cờ; `--check` kiểm tra phần dữ liệu |
 | scripts/cleaning_study.py, scripts/causal_imputation_benchmark.py, scripts/gap_threshold_study.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md) |
 | artifacts/dataset/ | Kết quả của các script trên: bảng thống kê và hình |
+| scripts/tune.py | Dò siêu tham số trên val: chạy lưới cấu hình, mỗi cấu hình ba seed, tổng hợp trung bình và độ lệch chuẩn |
+| artifacts/runs/ | Mỗi lần huấn luyện một thư mục: cấu hình, lịch sử huấn luyện, chỉ số trên val; bảng tổng hợp dò siêu tham số tuning_<mô hình>_<cấu hình>.csv; checkpoint model.pt không đưa lên git |
 
 ## 3. Định dạng dữ liệu
 

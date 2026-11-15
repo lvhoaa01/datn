@@ -7,3 +7,6 @@ __pycache__/
 
 # Ung vien dataset va audit (tam thoi, 558 MB)
 candidate_dataset/
+
+# Checkpoint mo hinh (lon); config, history, metrics van duoc commit
+artifacts/runs/*/model.pt

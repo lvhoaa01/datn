@@ -1,4 +1,4 @@
-"""Huấn luyện mô hình dự báo DO. Hiện có phần dữ liệu; phần mô hình và vòng huấn luyện bổ sung sau.
+"""Huấn luyện và đánh giá mô hình dự báo DO nhiều bước (LSTM, GRU).
 
 Dữ liệu: base_splits chuẩn hóa bằng StandardScaler khớp trên train (common.fit_scaler), cửa sổ theo
 common.window_starts, cắt tại chỗ khi nạp, không lưu cửa sổ ra đĩa. Mỗi mẫu gồm
@@ -6,16 +6,32 @@ common.window_starts, cắt tại chỗ khi nạp, không lưu cửa sổ ra đ�
      cửa sổ chứa ô cờ -1 đã bị loại nên cờ chỉ còn 0 hoặc 1);
   y: (n_out,) DO đã chuẩn hóa của nhãn [t, t + n_out);
   m: (n_out,) True ở mốc nhãn có DO cờ 0; chỉ các mốc này được tính sai số và hàm mất mát.
-Chạy từ gốc repo: uv run python scripts/train.py --check   (kiểm tra phần dữ liệu của cả hai cấu hình)
+Mô hình: mạng hồi quy (LSTM hoặc GRU) đọc đầu vào, trạng thái ẩn ở mốc cuối qua một lớp tuyến tính ra thẳng n_out
+bước DO (dự báo trực tiếp). Huấn luyện trên train với AdamW, hàm mất mát MSE có mặt nạ, dừng sớm theo MAE (mg/L) trên val; test chưa
+được chấm ở đây (README mục 5.4: chỉ chấm một lần sau khi chọn xong cấu hình).
+Mỗi lần chạy ghi artifacts/runs/<thời điểm>_<mô hình>_<cấu hình>/: config.json, history.csv, metrics.json và
+model.pt (trọng số kèm trung bình, độ lệch chuẩn của scaler).
+Chạy từ gốc repo: uv run python scripts/train.py --model lstm --cfg 24h_6h
+                  uv run python scripts/train.py --check   (kiểm tra phần dữ liệu của cả hai cấu hình)
 """
 import argparse
+import json
+import os
+import random
+import subprocess
+import time
+from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import torch
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from common import CONFIGS, FEATURES, FILLED, FLAGS, NAMES, OBSERVED, fit_scaler, inverse_do, load_base_all, window_starts
+from common import (CONFIGS, FEATURES, FILLED, FLAGS, NAMES, OBSERVED, REPO, fit_scaler, inverse_do, load_base_all,
+                    metrics, window_starts)
 
+RUNS = os.path.join(REPO, "artifacts", "runs")
 # số cửa sổ dùng được của từng tập, khớp README mục 5.2
 EXPECTED = {"24h_6h": {"train": 189769, "val": 25520, "test": 26183},
             "7d_24h": {"train": 189121, "val": 24161, "test": 25472}}
@@ -39,8 +55,8 @@ class WindowDataset(Dataset):
         return self.X[t - self.n_in:t], self.X[t:t + self.n_out, 0], self.obs[t:t + self.n_out]
 
 
-def make_data(cfg, batch_size=256, fit_on=("train",), d=None):
-    """DataLoader của ba tập cho cấu hình cfg, kèm scaler đã khớp trên fit_on; chỉ train được xáo trộn."""
+def make_data(cfg, batch_size=256, fit_on=("train",), d=None, seed=0):
+    """DataLoader của ba tập cho cấu hình cfg, kèm scaler đã khớp trên fit_on; chỉ train được xáo trộn (theo seed)."""
     n_in, n_out = CONFIGS[cfg]
     d = load_base_all() if d is None else d
     scaler = fit_scaler(d, fit_on)
@@ -48,9 +64,112 @@ def make_data(cfg, batch_size=256, fit_on=("train",), d=None):
     X = torch.as_tensor(np.hstack([Z, d[FLAGS].to_numpy() == FILLED]), dtype=torch.float32)
     obs = torch.as_tensor(d["flag_do_mg_l"].to_numpy() == OBSERVED)
     starts = window_starts(d, n_in, n_out)
+    g = torch.Generator().manual_seed(seed)
     loaders = {n: DataLoader(WindowDataset(X, obs, starts[n], n_in, n_out), batch_size=batch_size,
-                             shuffle=n == "train") for n in NAMES}
+                             shuffle=n == "train", generator=g if n == "train" else None, pin_memory=True)
+               for n in NAMES}
     return loaders, scaler
+
+
+class RNNForecaster(nn.Module):
+    """Mạng hồi quy nhiều lớp đọc đầu vào; trạng thái ẩn ở mốc cuối qua lớp tuyến tính ra n_out bước DO."""
+
+    def __init__(self, cell, n_feat, n_out, hidden, layers, dropout):
+        """cell: "lstm" hoặc "gru"; dropout áp giữa các lớp hồi quy."""
+        super().__init__()
+        rnn = {"lstm": nn.LSTM, "gru": nn.GRU}[cell]
+        self.rnn = rnn(n_feat, hidden, layers, batch_first=True, dropout=dropout if layers > 1 else 0.0)
+        self.head = nn.Linear(hidden, n_out)
+
+    def forward(self, x):
+        """x: (batch, n_in, n_feat) -> (batch, n_out) DO đã chuẩn hóa."""
+        out, _ = self.rnn(x)
+        return self.head(out[:, -1])
+
+
+def masked_mse(pred, y, m):
+    """MSE chỉ trên các mốc m (DO cờ 0)."""
+    m = m.float()
+    return ((pred - y) ** 2 * m).sum() / m.sum()
+
+
+@torch.no_grad()
+def predict(model, loader, device):
+    """Dự báo cả tập: (pred, y, m) dạng numpy, DO còn ở thang chuẩn hóa."""
+    model.eval()
+    P, Y, M = [], [], []
+    for x, y, m in loader:
+        P.append(model(x.to(device, non_blocking=True)).cpu())
+        Y.append(y)
+        M.append(m)
+    return torch.cat(P).numpy(), torch.cat(Y).numpy(), torch.cat(M).numpy()
+
+
+def evaluate(model, loader, scaler, device):
+    """MAE, RMSE, R2 (mg/L) trên các mốc DO cờ 0, kèm MAE theo từng bước dự báo."""
+    p, y, m = predict(model, loader, device)
+    p, y = inverse_do(scaler, p), inverse_do(scaler, y)
+    r = metrics(p, y, m)
+    r["MAE_theo_buoc"] = [float(np.abs(p[:, k] - y[:, k])[m[:, k]].mean()) for k in range(y.shape[1])]
+    return r
+
+
+def seed_all(seed):
+    """Cố định seed của random, numpy và torch."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def train(args):
+    """Huấn luyện trên train, dừng sớm theo MAE val, ghi thư mục kết quả; trả về đường dẫn thư mục."""
+    seed_all(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    loaders, scaler = make_data(args.cfg, args.batch, seed=args.seed)
+    n_in, n_out = CONFIGS[args.cfg]
+    model = RNNForecaster(args.model, 12, n_out, args.hidden, args.layers, args.dropout).to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    name = f"{datetime.now():%Y%m%d-%H%M%S}_{args.model}_{args.cfg}"
+    out = os.path.join(RUNS, name)
+    os.makedirs(out)
+    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
+    config = dict(vars(args), n_in=n_in, n_out=n_out, n_params=sum(p.numel() for p in model.parameters()),
+                  device=torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu", git_commit=commit,
+                  so_cua_so={n: len(dl.dataset) for n, dl in loaders.items()})
+    json.dump(config, open(os.path.join(out, "config.json"), "w"), indent=1, ensure_ascii=False)
+    print(f"{name}: {config['n_params']} tham số, {config['device']}")
+    hist, best, best_state, best_epoch, wait = [], np.inf, None, 0, 0
+    for epoch in range(1, args.epochs + 1):
+        t0, tot, n = time.time(), 0.0, 0
+        model.train()
+        for x, y, m in loaders["train"]:
+            x, y, m = (v.to(device, non_blocking=True) for v in (x, y, m))
+            loss = masked_mse(model(x), y, m)
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), args.clip)
+            opt.step()
+            tot, n = tot + loss.item() * len(x), n + len(x)
+        val = evaluate(model, loaders["val"], scaler, device)
+        hist.append(dict(epoch=epoch, train_mse=tot / n, val_MAE=val["MAE"], val_RMSE=val["RMSE"], val_R2=val["R2"],
+                         giay=round(time.time() - t0, 1)))
+        print(f"epoch {epoch:3d}  train MSE {tot / n:.4f}  val MAE {val['MAE']:.4f}  RMSE {val['RMSE']:.4f}  "
+              f"R2 {val['R2']:.4f}  {hist[-1]['giay']} giây")
+        if val["MAE"] < best - 1e-4:
+            best, best_epoch, wait = val["MAE"], epoch, 0
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        else:
+            wait += 1
+            if wait >= args.patience:
+                break
+    pd.DataFrame(hist).to_csv(os.path.join(out, "history.csv"), index=False)
+    model.load_state_dict(best_state)
+    val = evaluate(model, loaders["val"], scaler, device)
+    json.dump(dict(best_epoch=best_epoch, val=val), open(os.path.join(out, "metrics.json"), "w"), indent=1)
+    torch.save(dict(state_dict=best_state, config=config, scaler_mean=scaler.mean_.tolist(),
+                    scaler_scale=scaler.scale_.tolist()), os.path.join(out, "model.pt"))
+    print(f"tốt nhất ở epoch {best_epoch}: val MAE {val['MAE']:.4f}  RMSE {val['RMSE']:.4f}  R2 {val['R2']:.4f}")
+    return out
 
 
 def check():
@@ -83,14 +202,33 @@ def check():
     print("DATA CHECKS PASSED")
 
 
-def main():
-    """Điểm vào; hiện chỉ có --check."""
+def build_parser():
+    """Bộ đọc tham số dòng lệnh, giữ giá trị mặc định của mọi siêu tham số (tune.py dùng lại)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="kiểm tra phần dữ liệu")
-    if ap.parse_args().check:
+    ap.add_argument("--model", default="lstm", choices=["lstm", "gru"])
+    ap.add_argument("--cfg", default="24h_6h", choices=list(CONFIGS))
+    ap.add_argument("--hidden", type=int, default=64)
+    ap.add_argument("--layers", type=int, default=2)
+    ap.add_argument("--dropout", type=float, default=0.1)
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--weight_decay", type=float, default=1e-4)
+    ap.add_argument("--batch", type=int, default=256)
+    ap.add_argument("--epochs", type=int, default=50)
+    ap.add_argument("--patience", type=int, default=5, help="số epoch không cải thiện val MAE trước khi dừng")
+    ap.add_argument("--clip", type=float, default=1.0, help="ngưỡng chuẩn gradient")
+    ap.add_argument("--seed", type=int, default=0)
+    return ap
+
+
+def main():
+    """Điểm vào: --check hoặc huấn luyện một mô hình."""
+    args = build_parser().parse_args()
+    if args.check:
         check()
     else:
-        ap.print_help()
+        del args.check
+        train(args)
 
 
 if __name__ == "__main__":

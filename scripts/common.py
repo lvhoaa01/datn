@@ -107,6 +107,14 @@ def fit_scaler(d, splits=("train",)):
     return StandardScaler().fit(d.loc[d["split"].isin(splits), FEATURES].to_numpy())
 
 
+def metrics(pred, true, mask):
+    """MAE, RMSE (mg/L) và R2 trên các mốc mask (DO cờ 0); R2 = 1 - SSE / SST, SST quanh trung bình DO thật đã chọn."""
+    import numpy as np
+    e, y = (pred - true)[mask], true[mask]
+    return dict(MAE=float(np.abs(e).mean()), RMSE=float(np.sqrt((e ** 2).mean())),
+                R2=float(1 - (e ** 2).sum() / ((y - y.mean()) ** 2).sum()))
+
+
 def inverse_do(scaler, z):
     """Đổi DO đã chuẩn hóa (mảng bất kỳ hình dạng) về mg/L; DO là cột 0 của FEATURES."""
     return z * scaler.scale_[0] + scaler.mean_[0]
