@@ -1,4 +1,4 @@
-month,regime,DO_mean,DO_sd,DO_p05,diel_range_median,temp_mean,chl_mean,spc_mean,turb_mean,persistence_6h_RMSE,episodes_lt6,episodes_lt5
+month,regime,DO_mean,DO_sd,DO_p05,diel_range_median,temp_mean,chl_mean,spc_mean,turb_mean,do_change_6h_rms,episodes_lt6,episodes_lt5
 1,lanh,9.998,1.135,7.78,0.485,10.731,4.435,660.267,14.055,0.313,0,0
 2,lanh,10.15,0.766,8.93,0.685,11.806,7.143,525.176,16.383,0.391,0,0
 3,lanh,9.787,0.993,7.96,0.56,14.152,9.322,488.403,13.626,0.545,0,0

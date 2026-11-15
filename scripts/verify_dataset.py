@@ -6,10 +6,9 @@ Kiểm tra:
      không trùng mốc.
   3. base_splits: đúng tiêu đề, khoảng thời gian, số dòng; lưới 15 phút liên tục; ba tập nối tiếp, không chồng lấn.
   4. Từng ô so với nguồn, trên chuỗi nối ba tập: số đo hợp lệ (khác NA, trong miền RANGES) có cờ 0 và trùng
-     nguyên văn; ô còn lại có cờ 1 và trùng nguyên văn số đo hợp lệ gần nhất phía trước, hoặc cờ -1 và NA nếu chưa
-     có số đo nào phía trước.
-  5. Số ô cờ 1 và cờ -1 của từng tập khớp FLAG_COUNTS (dataset/LAM_SACH.md mục 4.4).
-  6. Số cửa sổ bị bỏ khớp WINDOWS (dataset/README.md mục 5.2, dataset/LAM_SACH.md mục 4.4).
+     nguyên văn; ô còn lại có cờ 1 và trùng nguyên văn số đo hợp lệ gần nhất phía trước (phải có số đo như vậy).
+  5. Số ô cờ 1 của từng tập khớp FLAG_COUNTS (dataset/LAM_SACH.md mục 4.3).
+  6. Số cửa sổ bị bỏ khớp WINDOWS (dataset/README.md mục 5.2, dataset/LAM_SACH.md mục 4.3).
 Chạy từ gốc repo: uv run python scripts/verify_dataset.py           (kiểm chứng)
                   uv run python scripts/verify_dataset.py --write   (ghi lại manifest)
 """
@@ -30,7 +29,7 @@ RAW_BYTES, RAW_MD5 = 33877088, "9b3482d7f375014273bac0088a8d95d8"
 EXPECTED = {"train": ("2019-01-01 00:00:00", "2024-05-31 23:45:00", 189888),
             "val": ("2024-06-01 00:00:00", "2025-02-28 23:45:00", 26208),
             "test": ("2025-03-01 00:00:00", "2025-11-30 23:45:00", 26400)}
-FLAG_COUNTS = {"train": {1: 4098, -1: 0}, "val": {1: 212, -1: 0}, "test": {1: 107, -1: 0}}
+FLAG_COUNTS = {"train": 4098, "val": 212, "test": 107}
 # cấu hình: {tập: (số cửa sổ có thể tạo, số cửa sổ bị bỏ)}, khớp README mục 5.2
 WINDOWS = {"24h_6h": {"train": (189769, 424), "val": (26185, 0), "test": (26377, 0)},
            "7d_24h": {"train": (189121, 225), "val": (26113, 0), "test": (26305, 0)}}
@@ -95,25 +94,20 @@ def check_cells(splits, raw):
             if s != "NA" and lo <= float(s) <= hi:
                 check(k == 0 and x == s, f"{t} {c}: observed raw {s}, got {x} flag {k}")
                 last = s
-            elif last is not None:
-                check(k == 1 and x == last, f"{t} {c}: expected ffill {last}, got {x} flag {k}")
             else:
-                check(k == -1 and x == "NA", f"{t} {c}: expected NA, got {x} flag {k}")
+                check(last is not None and k == 1 and x == last, f"{t} {c}: expected ffill {last}, got {x} flag {k}")
     for name, s in zip(NAMES, splits):
-        fl = [k for f in s[2] for k in f]
-        got = {k: fl.count(k) for k in (1, -1)}
-        check(got == FLAG_COUNTS[name], f"{name}: flag counts {got} != {FLAG_COUNTS[name]}")
-        print(f"[3-5] {name}: {len(s[0])} rows {s[0][0]} .. {s[0][-1]} | flag 1 / -1: {got[1]} / {got[-1]}")
+        got = sum(k == 1 for f in s[2] for k in f)
+        check(got == FLAG_COUNTS[name], f"{name}: flag 1 count {got} != {FLAG_COUNTS[name]}")
+        print(f"[3-5] {name}: {len(s[0])} rows {s[0][0]} .. {s[0][-1]} | flag 1: {got}")
 
 
 def check_windows(splits):
     """Kiểm tra 6: đếm cửa sổ theo quy tắc của common.window_starts, cài đặt lại độc lập bằng thư viện chuẩn."""
-    flags = [fl for s in splits for fl in s[2]]
-    miss = [0]
-    obs = [0]
-    for fl in flags:
-        miss.append(miss[-1] + (-1 in fl))
-        obs.append(obs[-1] + (fl[0] == 0))
+    obs = [0]                                   # tổng tích lũy số mốc DO cờ 0
+    for s in splits:
+        for fl in s[2]:
+            obs.append(obs[-1] + (fl[0] == 0))
     offs = [0]
     for s in splits:
         offs.append(offs[-1] + len(s[2]))
@@ -122,7 +116,7 @@ def check_windows(splits):
         got = {}
         for si, name in enumerate(NAMES):
             ts = range(max(offs[si], lin), offs[si + 1] - lout + 1)
-            drop = sum(1 for t in ts if miss[t + lout] - miss[t - lin] > 0 or obs[t + lout] - obs[t] == 0)
+            drop = sum(1 for t in ts if obs[t + lout] - obs[t] == 0)
             got[name] = (len(ts), drop)
         check(got == exp, f"windows {cfg}: {got} != {exp}")
         print(f"[6] windows {cfg} (total, dropped): {got}")

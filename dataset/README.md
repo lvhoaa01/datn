@@ -32,10 +32,11 @@ Mã nguồn và kết quả phân tích nằm ngoài thư mục dataset, ở g�
 |---|---|
 | scripts/common.py | Hằng số, ranh giới tập, cấu hình dự báo, hàm đọc dữ liệu và tạo cửa sổ |
 | scripts/build_base_splits.py, scripts/verify_dataset.py | Tạo base_splits/ từ raw/; kiểm chứng dataset (mục 6) |
-| scripts/describe_dataset.py, scripts/baselines.py | Thống kê mô tả (mục 4); mức sai số tham chiếu (mục 5.3) |
+| scripts/describe_dataset.py | Thống kê mô tả (mục 4) |
 | scripts/train.py | Huấn luyện và đánh giá mô hình LSTM, GRU: dự báo trực tiếp DO cho các bước của nhãn, đầu vào gồm sáu biến đã chuẩn hóa và sáu cột cờ; `--check` kiểm tra phần dữ liệu |
 | scripts/tune.py | Dò siêu tham số trên val: chạy lưới cấu hình, mỗi cấu hình ba seed, tổng hợp trung bình và độ lệch chuẩn |
-| scripts/cleaning_study.py, scripts/causal_imputation_benchmark.py, scripts/gap_study.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md): miền giá trị và điểm đột biến, benchmark các phương pháp điền, histogram khoảng trống |
+| scripts/cleaning_study.py, scripts/gap_study.py | Các phân tích làm căn cứ cho quy trình làm sạch (LAM_SACH.md): miền giá trị và điểm đột biến, histogram khoảng trống |
+| scripts/figures.py | Các hình minh họa trong README.md và LAM_SACH.md |
 | artifacts/dataset/ | Kết quả của các script trên: bảng thống kê và hình |
 | artifacts/runs/ | Mỗi lần huấn luyện một thư mục: cấu hình, lịch sử huấn luyện, chỉ số trên val; bảng tổng hợp dò siêu tham số tuning_<mô hình>_<cấu hình>.csv; checkpoint model.pt không đưa lên git |
 
@@ -60,7 +61,7 @@ datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag
 | turbidity_fnu | turbidity | FNU | Độ đục, đo bằng ánh sáng hồng ngoại theo ISO 7027 |
 | chl_fluor_ug_l | fluorescence | ug/L | Huỳnh quang chlorophyll, chỉ thị gián tiếp lượng tảo |
 
-Cột flag_<tên biến> cho biết nguồn gốc giá trị: 0 là số đo thật, chép nguyên văn từ nguồn; 1 là ô trống (hoặc số đo ngoài miền vật lý) được điền bằng số đo thật gần nhất phía trước; -1 là ô chưa có số đo nào phía trước, giá trị ghi NA (dataset này không có ô nào như vậy). Định nghĩa đầy đủ ở LAM_SACH.md, mục 5. Dấu thập phân là dấu chấm.
+Cột flag_<tên biến> cho biết nguồn gốc giá trị: 0 là số đo thật, chép nguyên văn từ nguồn; 1 là ô trống (hoặc số đo ngoài miền vật lý) được điền bằng số đo thật gần nhất phía trước. Định nghĩa đầy đủ ở LAM_SACH.md, mục 5. Dấu thập phân là dấu chấm.
 
 Trong file nguồn, ô ghi NA là giá trị bị CEMP loại khi thẩm định hoặc không đo được do thiết bị trục trặc. Ví dụ dòng 2019-02-05 12:15:00 trong nguồn có cả sáu biến là NA.
 
@@ -89,38 +90,31 @@ P01 và P99 là phân vị 1% và 99%: 1% số giá trị nhỏ hơn P01, 1% s�
 
 ### 4.2. Dữ liệu khuyết
 
-Mỗi biến thiếu 0.24 đến 0.35% số dòng; 0.59% số dòng thiếu ít nhất một biến. Phần lớn ô thiếu nằm lẻ tẻ: tính theo dòng (các dòng liên tiếp có ít nhất một biến NA), 91.8% số khoảng trống dài không quá 1 giờ. Phân bố theo từng biến ở LAM_SACH.md, mục 4.1.
+Mỗi biến thiếu 0.24 đến 0.35% số dòng. Phần lớn khoảng trống ngắn (91.8% không quá 1 giờ, tính theo dòng), nhưng phần lớn thời gian trống thuộc vài lần cả đầu đo ngừng ghi, đều trong train, dài nhất 64.25 giờ từ 2020-06-12 13:45. Khoảng trống dài nhất của val là 6.5 giờ (độ dẫn), của test là 1.5 giờ. Hình và số liệu ở LAM_SACH.md, mục 4.1.
 
-Tính theo thời gian, phần lớn dữ liệu trống nằm trong vài lần cả đầu đo ngừng ghi, đều trong train: dài nhất là 64.25 giờ, từ 2020-06-12 13:45; bốn trong năm lần ngừng ghi rơi vào tháng 4 đến tháng 6 năm 2020. Trong val, khoảng trống dài nhất là 6.5 giờ (độ dẫn); trong test là 1.5 giờ. Histogram và danh sách khoảng trống dài ở LAM_SACH.md, mục 4.1.
+### 4.3. Nhịp ngày đêm và theo mùa
 
-### 4.3. Diễn biến của DO
+Các giai đoạn mùa dùng trong tài liệu: lạnh tháng 11 đến 3, xuân tháng 4 và 5, nóng tháng 6 đến 9, thu tháng 10.
 
-- DO ghi với độ chính xác 0.01 mg/L; 16.5% số cặp dòng liền kề có giá trị bằng nhau.
-- DO dao động theo ngày: thấp nhất khoảng 07:00 (sau một đêm tảo hô hấp), cao nhất khoảng 16:00 (sau nhiều giờ quang hợp). Chênh lệch giữa cao nhất và thấp nhất trong ngày có trung vị 0.96 mg/L; 10% số ngày chênh lệch trên 3.32 mg/L.
-- Trung bình từng tháng giải thích 51.5% phương sai của DO; phần còn lại chủ yếu là dao động trong ngày. Trung bình từng năm nằm trong khoảng 8.91 đến 10.13 mg/L, không có dấu hiệu cảm biến bị trôi dần theo thời gian.
-- Mùa hè có các điểm DO lệch mạnh trong đúng một mốc 15 phút rồi quay lại, gọi là điểm DO đột biến một mốc; có 212 điểm như vậy, phần lớn trong tháng 7 và 8 (LAM_SACH.md, mục 6).
-- Đợt DO thấp được định nghĩa là khoảng DO dưới ngưỡng kéo dài ít nhất 1 giờ; hai khoảng cách nhau không quá 1 giờ được gộp thành một đợt. Từ 2019 đến 2025 có 13 đợt dưới 6 mg/L và 1 đợt dưới 5 mg/L. Các đợt rơi vào ba giai đoạn nắng nóng: tháng 8 năm 2020 (6 đợt, gồm đợt dưới 5 mg/L ngày 2020-08-24, DO thấp nhất 3.48 mg/L), tháng 9 năm 2022 (2 đợt) và tháng 8 năm 2025 (5 đợt); đều vào ban đêm và buổi sáng, khi nước ấm 25 đến 27.5 độ C. Không có giá trị nào dưới 3 mg/L.
+![Nhịp ngày đêm và theo mùa](../artifacts/dataset/fig_ngay_dem_mua.png)
 
-### 4.4. Theo mùa
+- Trong ngày, DO thấp nhất khoảng 07:15 (sau một đêm tảo hô hấp) và cao nhất khoảng 16:30 (sau nhiều giờ quang hợp). Chênh lệch giữa cao nhất và thấp nhất trong ngày có trung vị 0.96 mg/L; 10% số ngày chênh lệch trên 3.32 mg/L.
+- Mùa nóng khó dự báo nhất. Tháng 7 và 8 tảo nở hoa (chlorophyll trung bình tháng 7 là 26 ug/L) và DO dao động gần 3 mg/L mỗi ngày. Khung "DO thay đổi sau 6 giờ" đo mức biến động: căn bậc hai của trung bình bình phương hiệu giữa DO 6 giờ sau và DO hiện tại; ở mùa nóng mức này gấp khoảng 3 lần mùa lạnh.
+- Trung bình từng tháng giải thích 51.5% phương sai của DO; phần còn lại chủ yếu là dao động trong ngày. Trung bình từng năm nằm trong khoảng 8.91 đến 10.13 mg/L, không có dấu hiệu cảm biến bị trôi dần.
+- DO ghi với độ chính xác 0.01 mg/L. Mùa hè có 212 điểm DO lệch mạnh trong đúng một mốc 15 phút rồi quay lại (LAM_SACH.md, mục 6).
 
-Độ khó trong bảng là sai số RMSE (mg/L) của cách dự báo đơn giản nhất: lấy DO hiện tại làm dự báo cho 6 giờ sau. Sai số càng lớn thì DO thay đổi càng nhiều trong 6 giờ, càng khó dự báo. Số liệu gộp 2019 đến 2025; chi tiết theo tháng trong artifacts/dataset/monthly_dynamics.csv.
+Số liệu theo tháng: artifacts/dataset/monthly_dynamics.csv; theo tập: do_dynamics.csv.
 
-| Giai đoạn | Tháng | DO trung bình (mg/L) | Chênh lệch trong ngày (mg/L) | Nhiệt độ (độ C) | Độ khó 6 giờ | Số đợt DO dưới 6 |
-|---|---|---|---|---|---|---|
-| Lạnh, ổn định | 11 đến 3 | 9.61 đến 10.15 | 0.49 đến 0.69 | 10.7 đến 14.2 | 0.30 đến 0.55 | 0 |
-| Chuyển mùa xuân | 4, 5 | 9.05 đến 9.32 | 0.79 đến 1.01 | 16.9 đến 18.9 | 0.60 đến 0.62 | 0 |
-| Nóng | 6 đến 9 | 8.46 đến 10.28 | 1.40 đến 2.98 | 21.3 đến 24.4 | 0.85 đến 1.52 | 13 |
-| Chuyển mùa thu | 10 | 8.89 | 0.83 | 18.2 | 0.51 | 0 |
+### 4.4. Đợt DO thấp
 
-Mùa nóng khó dự báo gấp khoảng 3 lần mùa lạnh và chứa toàn bộ đợt DO thấp. Khó nhất là tháng 7 và 8, khi tảo nở hoa: chlorophyll trung bình tháng 7 là 26 ug/L, gấp 3 đến 8 lần các tháng mùa lạnh, và DO dao động gần 3 mg/L mỗi ngày, vừa vượt bão hòa ban ngày vừa có thể xuống dưới 6 mg/L ban đêm.
+Đợt DO thấp là khoảng DO dưới ngưỡng kéo dài ít nhất 1 giờ; hai khoảng cách nhau không quá 1 giờ được gộp thành một đợt. Từ 2019 đến 2025 có 13 đợt dưới 6 mg/L và 1 đợt dưới 5 mg/L, trong ba giai đoạn nắng nóng: tháng 8 năm 2020 (6 đợt, gồm đợt dưới 5 mg/L ngày 2020-08-24, DO thấp nhất 3.48 mg/L), tháng 9 năm 2022 (2 đợt) và tháng 8 năm 2025 (5 đợt). Các đợt đều vào ban đêm và buổi sáng, khi nước ấm 25 đến 27.5 độ C. Vị trí các đợt trên toàn chuỗi ở hình mục 5.1.
 
 ### 4.5. Hạn chế
 
 - Không có số liệu thủy văn (lưu lượng, mực nước) và khí tượng (bức xạ mặt trời, gió).
 - Đợt DO thấp hiếm: val không có đợt nào dưới 6 mg/L, test có 5 đợt và không có đợt nào dưới 5 mg/L. Nhiều mốc DO thấp nhất của test là điểm đột biến một mốc (LAM_SACH.md, mục 6).
-- Val và test không có khoảng trống nào dài hơn 6.5 giờ, nên chất lượng dự báo khi đầu vào chứa đoạn điền dài (nhiều giờ đến vài ngày, như các lần ngừng ghi trong train) không được đo (LAM_SACH.md, mục 4.4).
+- Val và test không có khoảng trống nào dài hơn 6.5 giờ, nên chất lượng dự báo khi đầu vào chứa đoạn điền dài (nhiều giờ đến vài ngày, như các lần ngừng ghi trong train) không được đo (LAM_SACH.md, mục 4.3).
 - Độ đục ghi theo đơn vị FNU từ năm 2021, trước đó là NTU; theo nhà sản xuất, hai đơn vị tương đương. Metadata nguồn ghi nhầm đơn vị độ dẫn ở phần định nghĩa; đơn vị đúng là uS/cm.
-- Dữ liệu trước năm 2019 không được đưa vào ba tập con. Năm 2017 thiếu nhiều (chỉ 61.5% số dòng đủ sáu biến); trước năm 2014 mỗi năm có 2 đến 6 đợt trống từ một ngày trở lên; năm 2018 có chất lượng gần với các năm sau (một sự kiện trống 75 giờ) và có thể thêm vào train nếu cần thêm dữ liệu (artifacts/dataset/yearly_quality.csv).
 
 ## 5. Phân chia dữ liệu
 
@@ -128,13 +122,15 @@ Mùa nóng khó dự báo gấp khoảng 3 lần mùa lạnh và chứa toàn b�
 
 Dữ liệu được chia theo thời gian, không xáo trộn. Nếu xáo trộn, hai đoạn dữ liệu chỉ cách nhau 15 phút (gần như giống hệt nhau) có thể rơi vào hai tập khác nhau, làm kết quả đánh giá tốt hơn thực tế. Ranh giới là 00:00 ngày đầu tháng.
 
+![DO toàn chuỗi và ba tập](../artifacts/dataset/fig_toan_chuoi.png)
+
 | Tập | Từ | Đến | Số dòng | Tỉ lệ |
 |---|---|---|---|---|
 | train | 2019-01-01 | 2024-05-31 | 189888 | 78.3% |
 | val | 2024-06-01 | 2025-02-28 | 26208 | 10.8% |
 | test | 2025-03-01 | 2025-11-30 | 26400 | 10.9% |
 
-Vì mùa nóng khó dự báo nhất và chứa mọi đợt DO thấp, val và test mỗi tập dài 9 tháng và chứa trọn mùa nóng (tháng 6 đến 9) cùng tháng chuyển mùa thu (tháng 10):
+Vì DO biến động mạnh nhất vào mùa nóng và mọi đợt DO thấp đều rơi vào mùa này, val và test mỗi tập dài 9 tháng và chứa trọn mùa nóng (tháng 6 đến 9) cùng tháng chuyển mùa thu (tháng 10):
 
 | Tập | Số tháng lạnh, xuân, nóng, thu | Số đợt DO dưới 6, dưới 5 | DO trung bình, độ lệch chuẩn | Dòng thiếu ít nhất một biến |
 |---|---|---|---|---|
@@ -144,15 +140,7 @@ Vì mùa nóng khó dự báo nhất và chứa mọi đợt DO thấp, val và 
 
 - train: năm năm đầy đủ, gồm cả năm nhiều nước (2019, 2023) và năm khô; chứa mọi lần đầu đo ngừng ghi dài.
 - val: mùa nóng 2024, tảo nở hoa mạnh (DO lên tới 17.29 mg/L), không có đợt DO thấp. Dùng để chọn cấu hình mô hình.
-- test: năm gần nhất, đủ xuân, hè, thu, khó dự báo nhất trong ba tập, có 5 đợt DO dưới 6 mg/L vào tháng 8. Mô phỏng việc đưa mô hình vào dùng cho một năm chưa từng thấy.
-
-Các cách chia khác đã xem xét:
-
-| Cách chia | Lý do không dùng |
-|---|---|
-| Chia theo năm (57%, 14%, 29% hoặc 71%, 14%, 14%) | Train còn 57% hoặc 71% số dòng, so với 78.3% ở cách chia đang dùng; val và test mỗi tập dài khoảng một năm trở lên |
-| Val từ 2024-07 đến 2025-03 | Val thiếu tháng 6 của mùa nóng |
-| Val và test chỉ gồm tháng 5 đến 11 của 2024 và 2025 | Dữ liệu không liền mạch giữa các tập |
+- test: năm gần nhất, đủ xuân, hè, thu, DO dao động trong ngày mạnh nhất trong ba tập (chênh lệch trong ngày có trung vị 1.54 mg/L, so với 1.06 của val và 0.90 của train), có 5 đợt DO dưới 6 mg/L vào tháng 8. Mô phỏng việc đưa mô hình vào dùng cho một năm chưa từng thấy.
 
 ### 5.2. Cấu hình dự báo và số mẫu
 
@@ -167,8 +155,7 @@ Hai cấu hình được chạy song song:
 
 Quy tắc tạo cửa sổ (cài đặt trong scripts/common.py, hàm window_starts):
 - nhãn nằm trọn trong một tập; đầu vào được lấy dữ liệu cuối của tập liền trước, vì đó là dữ liệu quá khứ;
-- bỏ cửa sổ có ô cờ -1 (chưa có số đo nào phía trước) trong đầu vào hoặc nhãn;
-- bỏ cửa sổ mà nhãn không còn mốc DO cờ 0 nào; sai số chỉ tính trên các mốc nhãn có DO cờ 0.
+- sai số chỉ tính trên các mốc nhãn có DO cờ 0 (đo thật); cửa sổ mà nhãn không có mốc DO cờ 0 nào thì không có gì để tính sai số nên bị bỏ.
 
 Số mẫu dùng được trên số mẫu có thể tạo:
 
@@ -181,56 +168,12 @@ Mọi ô trống đều được điền bằng số đo thật gần nhất ph�
 
 Đầu vào của mô hình gồm sáu biến và sáu cột cờ (1 với ô được điền, 0 với số đo thật), để mô hình phân biệt giá trị điền với số đo thật.
 
-### 5.3. Mức sai số tham chiếu
-
-**Mục đích.** Một con số sai số đứng riêng (ví dụ MAE 0.15 mg/L) không cho biết mô hình tốt hay kém. Vì vậy sai số của mô hình được so với sai số của các cách dự báo đơn giản, không cần học từ dữ liệu, gọi là mức tham chiếu (baseline). Mô hình chỉ có giá trị khi sai số thấp hơn mức tham chiếu tốt nhất; khoảng cách giữa hai sai số cho biết phần mô hình thực sự học được.
-
-**Hai cách dự báo tham chiếu.** Gọi thời điểm dự báo là t, mốc đo cuối cùng trước đó là t trừ 15 phút.
-
-| Cách | Tên thường dùng | Giá trị dự báo cho mốc t cộng k | Giả định |
-|---|---|---|---|
-| Giữ nguyên | Persistence | DO tại t trừ 15 phút, như nhau cho mọi k | DO không đổi trong khoảng dự báo |
-| Cùng giờ hôm qua | Seasonal naive, chu kỳ 1 ngày | DO tại t cộng k trừ 24 giờ | Diễn biến DO hôm nay lặp lại hôm qua |
-
-Cả hai chỉ dùng dữ liệu nằm trong đầu vào, nên mô hình nào cũng có sẵn thông tin này.
-
-**Ví dụ** (test, thời điểm dự báo 2025-06-03 12:00, DO lúc 11:45 là 9.35 mg/L):
-
-| Mốc | DO thật | Giữ nguyên | Sai lệch | Cùng giờ hôm qua | Sai lệch |
-|---|---|---|---|---|---|
-| 12:00 | 9.37 | 9.35 | 0.02 | 9.28 | 0.09 |
-| 14:00 | 9.84 | 9.35 | 0.49 | 9.77 | 0.07 |
-| 16:00 | 10.14 | 9.35 | 0.79 | 10.05 | 0.09 |
-| 17:45 | 10.21 | 9.35 | 0.86 | 10.22 | 0.01 |
-
-Giữ nguyên chỉ đúng ở các bước đầu: buổi chiều tảo quang hợp làm DO tăng, nên sai lệch lớn dần theo tầm dự báo. Cùng giờ hôm qua bắt được nhịp ngày đêm này.
-
-**Cách tính.** Tính trên đúng các cửa sổ ở mục 5.2 và chỉ trên các mốc nhãn có DO cờ 0, giống hệt cách đánh giá mô hình. Sai số lấy trung bình trên mọi bước của nhãn và mọi cửa sổ:
-- MAE: trung bình độ lệch tuyệt đối, mg/L;
-- RMSE: căn bậc hai của trung bình bình phương độ lệch, mg/L; nặng hơn MAE với các lần sai lớn;
-- R2: 1 trừ tỉ số giữa tổng bình phương sai số và tổng bình phương độ lệch của DO thật quanh trung bình của tập; bằng 1 khi dự báo đúng hoàn toàn.
-
-**Kết quả** (train và chi tiết ở artifacts/dataset/baselines.csv):
-
-| Cấu hình | Cách | Val: MAE | Val: RMSE | Val: R2 | Test: MAE | Test: RMSE | Test: R2 |
-|---|---|---|---|---|---|---|---|
-| 24 giờ, 6 giờ | Giữ nguyên | 0.380 | 0.651 | 0.841 | 0.451 | 0.749 | 0.745 |
-| 24 giờ, 6 giờ | Cùng giờ hôm qua | 0.328 | 0.553 | 0.885 | 0.400 | 0.637 | 0.816 |
-| 7 ngày, 24 giờ | Giữ nguyên | 0.587 | 0.953 | 0.659 | 0.693 | 1.074 | 0.477 |
-| 7 ngày, 24 giờ | Cùng giờ hôm qua | 0.329 | 0.554 | 0.885 | 0.401 | 0.637 | 0.816 |
-
-**Cách đọc.**
-- Cùng giờ hôm qua tốt hơn giữ nguyên ở cả hai cấu hình và là mức mô hình cần vượt. Chênh lệch giữa hai cách lớn hơn ở cấu hình 7 ngày, 24 giờ, vì giữ nguyên càng sai khi tầm dự báo càng dài.
-- Test khó hơn val (MAE của cùng giờ hôm qua 0.400 so với 0.328), vì mùa nóng 2025 biến động mạnh hơn mùa nóng 2024.
-- R2 của cùng giờ hôm qua là 0.82 đến 0.89, nghĩa là cách đơn giản này đã nắm được phần lớn biến động theo mùa và theo ngày. Do đó so sánh mô hình nên dựa chủ yếu vào MAE và RMSE.
-- Mô hình và các nhóm đặc trưng được so trên cùng mức tham chiếu, nên phần cải thiện so với cùng giờ hôm qua cho biết đóng góp của từng nhóm đặc trưng.
-
-### 5.4. Quy tắc sử dụng
+### 5.3. Quy tắc sử dụng
 
 1. Mọi thông số tính từ giá trị đo (ví dụ trung bình và độ lệch chuẩn để chuẩn hóa, ngưỡng của đặc trưng miền) chỉ tính trên train, để val và test không ảnh hưởng gián tiếp đến mô hình được chấm trên chính chúng. Các thí nghiệm so sánh mô hình (dữ liệu gốc, thêm đặc trưng miền, thêm đặc trưng ngữ nghĩa) dùng chung các mẫu và ranh giới tập.
 2. Chọn siêu tham số mô hình trên val, riêng cho từng cấu hình. Sau đó huấn luyện lại trên train cộng val (2019-01-01 đến 2025-02-28) và đánh giá trên test đúng một lần.
 3. Cảnh báo DO thấp chỉ đánh giá được trên test, ở ngưỡng 6 mg/L (5 đợt); val không có đợt nào dưới 6 mg/L nên không dùng để chỉnh ngưỡng cảnh báo, và cả val lẫn test đều không có đợt dưới 5 mg/L. Mục tiêu chất lượng nước của Basin Plan vùng Central Valley cho vùng châu thổ là DO không dưới 5.0 mg/L; mức 6.0 mg/L từ tháng 9 đến 11 áp dụng cho đoạn sông qua Stockton, ở hạ lưu trạm (chưa đối chiếu với phiên bản hiện hành). Vì vậy ngưỡng 6 mg/L ở trạm này là ngưỡng cảnh báo sớm, không phải mức pháp lý.
-4. Báo cáo MAE, RMSE, R2 cho từng cấu hình trên toàn bộ test và theo từng giai đoạn mùa, kèm mức sai số tham chiếu ở mục 5.3.
+4. Báo cáo MAE, RMSE, R2 cho từng cấu hình trên toàn bộ test và theo từng giai đoạn mùa, chỉ tính trên các mốc nhãn có DO cờ 0. MAE là trung bình độ lệch tuyệt đối giữa dự báo và DO thật; RMSE là căn bậc hai của trung bình bình phương độ lệch, nặng hơn MAE với các lần sai lớn; cả hai tính bằng mg/L. R2 bằng 1 trừ tỉ số giữa tổng bình phương sai số và tổng bình phương độ lệch của DO thật quanh trung bình của tập; bằng 1 khi dự báo đúng hoàn toàn.
 
 ## 6. Kiểm chứng và tái lập
 
@@ -238,19 +181,18 @@ scripts/verify_dataset.py kiểm tra:
 - mã SHA-256 của từng file khớp manifest_sha256.json;
 - file nguồn có kích thước và mã MD5 khớp metadata gốc của EDI, đủ 631735 dòng, các dòng cách đều 15 phút;
 - mỗi tập trong base_splits/ đúng khoảng thời gian, đúng số dòng, không thiếu dòng; ba tập nối tiếp nhau, không chồng lấn;
-- ô cờ 0 trùng nguyên văn với file nguồn; ô cờ 1 trùng nguyên văn số đo thật gần nhất phía trước; ô cờ -1 ghi NA (quy tắc được cài đặt lại độc lập để so từng ô);
+- ô cờ 0 trùng nguyên văn với file nguồn; ô cờ 1 trùng nguyên văn số đo thật gần nhất phía trước (quy tắc được cài đặt lại độc lập để so từng ô);
 - số ô theo cờ và số mẫu ở mục 5.2 khớp tài liệu.
 
 Kết quả ngày 2026-11-15: đạt toàn bộ. Bản sao raw/ có SHA-256 eb5d072fa1e624bc6878f6aec6eac542b45eef6552f10bdc1765264400166d05 và MD5 9b3482d7f375014273bac0088a8d95d8, trùng MD5 ghi trong metadata EDI.
 
-Môi trường Python (3.12, phiên bản thư viện khóa trong uv.lock) khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo theo thứ tự (lệnh đầu tạo base_splits/ mà các lệnh sau dùng):
+Môi trường Python (3.12, phiên bản thư viện khóa trong uv.lock) khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo theo thứ tự (lệnh đầu tạo base_splits/; figures.py dùng base_splits/ và bảng của ba lệnh trước nó):
 
 ```
-uv run python scripts/build_base_splits.py            # dataset/base_splits/ từ dataset/raw/
-uv run python scripts/describe_dataset.py             # thống kê mục 4
-uv run python scripts/cleaning_study.py               # căn cứ LAM_SACH.md mục 3, 6
-uv run python scripts/causal_imputation_benchmark.py  # căn cứ LAM_SACH.md mục 4.2
-uv run python scripts/gap_study.py                    # căn cứ LAM_SACH.md mục 4.1
-uv run python scripts/baselines.py                    # mức sai số tham chiếu mục 5.3
-uv run python scripts/verify_dataset.py               # kiểm chứng; --write để ghi lại manifest
+uv run python scripts/build_base_splits.py   # dataset/base_splits/ từ dataset/raw/
+uv run python scripts/describe_dataset.py    # thống kê mục 4
+uv run python scripts/cleaning_study.py      # căn cứ LAM_SACH.md mục 3, 6
+uv run python scripts/gap_study.py           # căn cứ LAM_SACH.md mục 4.1
+uv run python scripts/figures.py             # các hình của README.md và LAM_SACH.md
+uv run python scripts/verify_dataset.py      # kiểm chứng; --write để ghi lại manifest
 ```

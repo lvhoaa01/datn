@@ -2,13 +2,12 @@
 
 Dữ liệu: base_splits chuẩn hóa bằng StandardScaler khớp trên train (common.fit_scaler), cửa sổ theo
 common.window_starts, cắt tại chỗ khi nạp, không lưu cửa sổ ra đĩa. Mỗi mẫu gồm
-  x: (n_in, 12) đầu vào [t - n_in, t): sáu biến đã chuẩn hóa, rồi sáu cờ điền (1 ô được điền, 0 số đo thật;
-     cửa sổ chứa ô cờ -1 đã bị loại nên cờ chỉ còn 0 hoặc 1);
+  x: (n_in, 12) đầu vào [t - n_in, t): sáu biến đã chuẩn hóa, rồi sáu cờ điền (1 ô được điền, 0 số đo thật);
   y: (n_out,) DO đã chuẩn hóa của nhãn [t, t + n_out);
   m: (n_out,) True ở mốc nhãn có DO cờ 0; chỉ các mốc này được tính sai số và hàm mất mát.
 Mô hình: mạng hồi quy (LSTM hoặc GRU) đọc đầu vào, trạng thái ẩn ở mốc cuối qua một lớp tuyến tính ra thẳng n_out
 bước DO (dự báo trực tiếp). Huấn luyện trên train với AdamW, hàm mất mát MSE có mặt nạ, dừng sớm theo MAE (mg/L)
-trên val; test chưa được chấm ở đây (README mục 5.4: chỉ chấm một lần sau khi chọn xong cấu hình).
+trên val; test chưa được chấm ở đây (README mục 5.3: chỉ chấm một lần sau khi chọn xong cấu hình).
 Mỗi lần chạy ghi artifacts/runs/<thời điểm>_<mô hình>_<cấu hình>/: config.json, history.csv, metrics.json và
 model.pt (trọng số kèm trung bình, độ lệch chuẩn của scaler).
 Chạy từ gốc repo: uv run python scripts/train.py --model lstm --cfg 24h_6h
@@ -177,16 +176,15 @@ def train(args):
 
 
 def check():
-    """Kiểm tra: train sau chuẩn hóa có trung bình 0, độ lệch chuẩn 1 (bỏ qua ô NaN); phép ngược trả đúng mg/L; số cửa sổ khớp
+    """Kiểm tra: train sau chuẩn hóa có trung bình 0, độ lệch chuẩn 1; phép ngược trả đúng mg/L; số cửa sổ khớp
     README; không cửa sổ nào chứa NaN; cột cờ chỉ gồm 0 và 1, khớp base_splits; nhãn của mọi cửa sổ có ít nhất một
     mốc DO cờ 0."""
     d = load_base_all()
     scaler = fit_scaler(d)
     Z = scaler.transform(d.loc[d["split"] == "train", FEATURES].to_numpy())
-    # nanmean, nanstd: scaler bỏ qua ô NaN (cờ -1) nếu có
-    assert np.allclose(np.nanmean(Z, 0), 0, atol=1e-9) and np.allclose(np.nanstd(Z, 0), 1, atol=1e-9)
+    assert np.allclose(Z.mean(0), 0, atol=1e-9) and np.allclose(Z.std(0), 1, atol=1e-9)
     do = d["do_mg_l"].to_numpy()
-    assert np.allclose(inverse_do(scaler, scaler.transform(d[FEATURES].to_numpy())[:, 0]), do, equal_nan=True)
+    assert np.allclose(inverse_do(scaler, scaler.transform(d[FEATURES].to_numpy())[:, 0]), do)
     for c, mu, sd in zip(FEATURES, scaler.mean_, scaler.scale_):
         print(f"{c:15s} trung bình {mu:9.3f}  độ lệch chuẩn {sd:8.3f}")
     for cfg in CONFIGS:

@@ -29,7 +29,7 @@ NAMES = list(SPLITS)
 RANGES = {"do_mg_l": (0, 20), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
           "turbidity_fnu": (0, 1000), "chl_fluor_ug_l": (0, 200)}
 DAY = 96                  # số mốc 15 phút trong một ngày
-OBSERVED, FILLED, MISSING = 0, 1, -1    # giá trị cờ: số đo thật, ô điền bằng ffill, ô NA (chưa có số đo nào phía trước)
+OBSERVED, FILLED = 0, 1    # giá trị cờ: số đo thật, ô điền bằng số đo thật gần nhất phía trước (ffill)
 # cấu hình dự báo: (độ dài đầu vào, độ dài nhãn) tính bằng số mốc; 24h_6h là cấu hình chính
 CONFIGS = {"24h_6h": (96, 24), "7d_24h": (672, 96)}
 
@@ -75,9 +75,9 @@ def data_fingerprint():
 
 
 def load_base_split(name):
-    """Một tập đã làm sạch trong base_splits/: 6 biến (float, NaN ở ô cờ -1) và 6 cột cờ (int8: 0, 1, -1)."""
+    """Một tập đã làm sạch trong base_splits/: 6 biến (float, không có ô trống) và 6 cột cờ (int8: 0, 1)."""
     import pandas as pd
-    return pd.read_csv(os.path.join(BASE, f"{name}.csv"), na_values=["NA"], parse_dates=["datetime_pst"],
+    return pd.read_csv(os.path.join(BASE, f"{name}.csv"), parse_dates=["datetime_pst"],
                        dtype={f: "int8" for f in FLAGS})
 
 
@@ -91,28 +91,24 @@ def window_starts(d, n_in, n_out):
     """Thời điểm dự báo hợp lệ của từng tập: {tên tập: mảng chỉ số dòng t trong d = load_base_all()}.
 
     Cửa sổ t: đầu vào [t - n_in, t), nhãn [t, t + n_out). Nhãn nằm trọn trong tập; đầu vào được lấy dữ liệu cuối
-    của tập liền trước. Giữ cửa sổ khi đầu vào và nhãn không có ô cờ -1 và nhãn có ít nhất một mốc DO cờ 0.
+    của tập liền trước. Giữ cửa sổ khi nhãn có ít nhất một mốc DO cờ 0 (có DO thật để tính sai số).
     Đếm bằng tổng tích lũy nên mỗi cửa sổ kiểm tra trong O(1).
     """
     import numpy as np
-    fl = d[FLAGS].to_numpy()
-    missing = np.concatenate([[0], np.cumsum((fl == MISSING).any(axis=1))])
-    observed = np.concatenate([[0], np.cumsum(fl[:, 0] == OBSERVED)])
+    observed = np.concatenate([[0], np.cumsum(d["flag_do_mg_l"].to_numpy() == OBSERVED)])
     split = d["split"].to_numpy()
     out = {}
     for n in NAMES:
         idx = np.flatnonzero(split == n)
         t = np.arange(max(idx[0], n_in), idx[-1] + 2 - n_out)
-        ok = (missing[t + n_out] - missing[t - n_in] == 0) & (observed[t + n_out] - observed[t] > 0)
-        out[n] = t[ok]
+        out[n] = t[observed[t + n_out] - observed[t] > 0]
     return out
 
 
 def fit_scaler(d, splits=("train",)):
     """StandardScaler (trừ trung bình, chia độ lệch chuẩn tổng thể) khớp trên 6 biến của các tập splits trong d.
 
-    Mặc định chỉ train (README mục 5.4); khi huấn luyện lại trên train và val để chấm test thì truyền ("train", "val").
-    NaN (ô cờ -1) được bỏ qua khi khớp và giữ nguyên khi biến đổi.
+    Mặc định chỉ train (README mục 5.3); khi huấn luyện lại trên train và val để chấm test thì truyền ("train", "val").
     """
     from sklearn.preprocessing import StandardScaler
     return StandardScaler().fit(d.loc[d["split"].isin(splits), FEATURES].to_numpy())

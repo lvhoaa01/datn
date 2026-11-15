@@ -1,7 +1,7 @@
-feature,out_of_bounds_all,step_p99,step_p999,step_max,longest_flat_h,flat_runs_ge_6h
-do_mg_l,0,0.4,0.98,6.15,4.5,0
-water_temp_c,0,0.14,0.29,1.26,4.0,0
-ph,0,0.07,0.14,0.76,16.5,30
-spc_us_cm,0,13.0,46.0,124.0,18.5,102
-turbidity_fnu,0,6.34,16.853,42.29,0.75,0
-chl_fluor_ug_l,0,5.86,14.257,55.41,1.0,0
+feature,out_of_bounds_all,step_p99,step_p999,step_max
+do_mg_l,0,0.4,0.98,6.15
+water_temp_c,0,0.14,0.29,1.26
+ph,0,0.07,0.14,0.76
+spc_us_cm,0,13.0,46.0,124.0
+turbidity_fnu,0,6.34,16.853,42.29
+chl_fluor_ug_l,0,5.86,14.257,55.41

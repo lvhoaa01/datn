@@ -1,16 +1,18 @@
 """Thống kê mô tả ba tập train, val, test trước làm sạch, dùng cho dataset/README.md mục 4.
 
 Ghi vào artifacts/dataset/: feature_stats (từng biến), gap_stats (khoảng trống theo dòng), do_dynamics (DO theo tập),
-monthly_dynamics, split_by_regime (theo tháng, theo mùa), yearly_quality (chất lượng từng năm của toàn file nguồn, gồm cả
-các năm ngoài ba tập: tỉ lệ dòng đủ sáu biến hợp lệ, số đợt trống từ một ngày trở lên khi gộp các biến, tổng số giờ của
-các đợt đó). Danh sách khoảng trống dài nằm ở gap_events.csv (scripts/gap_study.py).
+monthly_dynamics, split_by_regime (theo tháng, theo mùa). Trong do_dynamics, month_var_explained_pct là phần trăm
+phương sai DO giải thích bởi trung bình từng tháng, year_mean_min, year_mean_max là trung bình năm nhỏ nhất, lớn nhất; diel_min_hour, diel_max_hour là giờ
+có DO trung bình thấp nhất, cao nhất trong ngày. Cột do_change_6h_rms: căn bậc hai của trung bình bình phương
+hiệu DO 6 giờ sau trừ DO hiện tại (mg/L), đo mức biến động. Danh sách khoảng trống dài nằm ở gap_events.csv
+(scripts/gap_study.py).
 Chạy từ gốc repo: uv run python scripts/describe_dataset.py
 """
 import os
 import numpy as np
 import pandas as pd
 
-from common import DAY, FEATURES as F, NAMES, RANGES, RAW, SOURCE, STATS as OUT, load_raw_split, runs
+from common import FEATURES as F, NAMES, STATS as OUT, load_raw_split, runs
 
 STEP_H = 0.25             # một mốc = 0.25 giờ
 
@@ -21,15 +23,22 @@ def load(name):
     return d.set_index("datetime_pst")
 
 
-def episodes(below, min_h=1.0, merge_h=1.0):
-    """Số đợt DO thấp: gộp hai đoạn dưới ngưỡng cách nhau không quá merge_h giờ, rồi đếm đoạn dài ít nhất min_h giờ."""
+def episode_spans(below, min_h=1.0, merge_h=1.0):
+    """Các đợt DO thấp (vị trí bắt đầu, số mốc): gộp hai đoạn dưới ngưỡng cách nhau không quá merge_h giờ, rồi giữ
+    đoạn dài ít nhất min_h giờ."""
     b = np.asarray(below, bool).copy()
     st, ln = runs(~b)
     for a, l in zip(st, ln):
         if 0 < a and a + l < len(b) and l * STEP_H <= merge_h:
             b[a:a + l] = True
     st, ln = runs(b)
-    return int((ln * STEP_H >= min_h).sum())
+    keep = ln * STEP_H >= min_h
+    return list(zip(st[keep], ln[keep]))
+
+
+def episodes(below, min_h=1.0, merge_h=1.0):
+    """Số đợt DO thấp theo episode_spans."""
+    return len(episode_spans(below, min_h, merge_h))
 
 
 def do_sat(t, spc):
@@ -45,33 +54,21 @@ def do_sat(t, spc):
     return np.exp(lnc)
 
 
+def month_r2(do):
+    """Phần trăm phương sai DO giải thích bởi trung bình từng tháng (theo năm và tháng)."""
+    v = do.dropna()
+    m = v.groupby([v.index.year, v.index.month]).transform("mean")
+    return 100 * (1 - ((v - m) ** 2).sum() / ((v - v.mean()) ** 2).sum())
+
+
 def season(m):
     """Giai đoạn mùa của tháng m (README mục 4.4): lanh, xuan, nong, thu."""
     return {11: "lanh", 12: "lanh", 1: "lanh", 2: "lanh", 3: "lanh", 4: "xuan", 5: "xuan",
             6: "nong", 7: "nong", 8: "nong", 9: "nong", 10: "thu"}[m]
 
 
-def yearly_quality():
-    """Bảng yearly_quality: theo năm của file nguồn, tỉ lệ dòng đủ sáu biến hợp lệ và các đợt trống từ một ngày trở lên."""
-    r = pd.read_csv(RAW, na_values=["NA"])
-    t = pd.to_datetime(r["date"] + " " + r["time"])
-    X = np.column_stack([r[SOURCE[c]].where(r[SOURCE[c]].between(*RANGES[c])).to_numpy(float) for c in F])
-    rows = []
-    for y in sorted(t.dt.year.unique()):
-        x = X[(t.dt.year == y).to_numpy()]
-        bad = np.zeros(len(x), bool)                   # ô thuộc khoảng trống từ một ngày của ít nhất một biến
-        for j in range(len(F)):
-            for a, l in zip(*runs(np.isnan(x[:, j]))):
-                if l >= DAY:
-                    bad[a:a + l] = True
-        st, ln = runs(bad)
-        rows.append(dict(nam=int(y), so_dong=len(x), du_6_bien_pct=round(100 * (~np.isnan(x)).all(1).mean(), 2),
-                         dot_trong_tu_1_ngay=len(ln), gio_cac_dot=float(ln.sum() * STEP_H)))
-    return pd.DataFrame(rows)
-
-
 def main():
-    """Tính và ghi sáu bảng thống kê."""
+    """Tính và ghi năm bảng thống kê."""
     os.makedirs(OUT, exist_ok=True)
     S = {n: load(n) for n in NAMES}
     S["all"] = pd.concat([S["train"], S["val"], S["test"]])
@@ -108,6 +105,8 @@ def main():
         do = d["do_mg_l"]
         day = do.resample("D")
         dr = (day.max() - day.min())[day.count() >= 86]
+        yr = do.groupby(do.index.year).mean()
+        prof = do.groupby(do.index.hour + do.index.minute / 60).mean()   # DO trung bình theo giờ trong ngày
         sat = do / do_sat(d["water_temp_c"], d["spc_us_cm"].fillna(0)) * 100
         r = dict(split=n, DO_mean=do.mean(), DO_sd=do.std(), diel_range_median=dr.median(), diel_range_p90=dr.quantile(.9),
                  sat_pct_median=sat.median(), sat_pct_p01=sat.quantile(.01), sat_pct_p99=sat.quantile(.99),
@@ -115,11 +114,13 @@ def main():
                  episodes_lt6=episodes((do < 6).fillna(False)), episodes_lt5=episodes((do < 5).fillna(False)),
                  pct_time_lt6=(do < 6).mean() * 100, pct_time_lt5=(do < 5).mean() * 100,
                  corr_temp=do.corr(d["water_temp_c"]), corr_ph=do.corr(d["ph"]), corr_spc=do.corr(d["spc_us_cm"]),
-                 corr_turb=do.corr(d["turbidity_fnu"]), corr_chl=do.corr(d["chl_fluor_ug_l"]))
+                 corr_turb=do.corr(d["turbidity_fnu"]), corr_chl=do.corr(d["chl_fluor_ug_l"]),
+                 month_var_explained_pct=month_r2(do), year_mean_min=yr.min(), year_mean_max=yr.max(),
+                 diel_min_hour=prof.idxmin(), diel_max_hour=prof.idxmax())
         rows.append(r)
     dyn = pd.DataFrame(rows).round(3)
     dyn.to_csv(os.path.join(OUT, "do_dynamics.csv"), index=False)
-    # 4. theo tháng và theo giai đoạn mùa; độ khó là RMSE của cách giữ nguyên ở tầm 6 giờ (24 mốc)
+    # 4. theo tháng và theo giai đoạn mùa; mức biến động là căn trung bình bình phương của DO(t + 6 giờ) - DO(t)
     rows = []
     do = full["do_mg_l"]
     day = do.resample("D")
@@ -135,7 +136,7 @@ def main():
                          diel_range_median=dr[dr.index.month == m].median(), temp_mean=full.loc[sel, "water_temp_c"].mean(),
                          chl_mean=full.loc[sel, "chl_fluor_ug_l"].mean(), spc_mean=full.loc[sel, "spc_us_cm"].mean(),
                          turb_mean=full.loc[sel, "turbidity_fnu"].mean(),
-                         persistence_6h_RMSE=np.sqrt((e6[sel] ** 2).mean()), episodes_lt6=ep6, episodes_lt5=ep5))
+                         do_change_6h_rms=np.sqrt((e6[sel] ** 2).mean()), episodes_lt6=ep6, episodes_lt5=ep5))
     pd.DataFrame(rows).round(3).to_csv(os.path.join(OUT, "monthly_dynamics.csv"), index=False)
     rows = []
     for n in NAMES:
@@ -148,9 +149,8 @@ def main():
             e = (d["do_mg_l"].shift(-24) - d["do_mg_l"])[sel]
             rows.append(dict(split=n, regime=reg, months=int(pd.Series(d.index[sel].strftime("%Y-%m")).nunique()),
                              rows=int(sel.sum()), DO_mean=do_.mean(), DO_sd=do_.std(),
-                             persistence_6h_RMSE=np.sqrt((e**2).mean())))
+                             do_change_6h_rms=np.sqrt((e**2).mean())))
     pd.DataFrame(rows).round(3).to_csv(os.path.join(OUT, "split_by_regime.csv"), index=False)
-    yearly_quality().to_csv(os.path.join(OUT, "yearly_quality.csv"), index=False)
     print("written to", OUT)
 
 
