@@ -8,5 +8,7 @@ __pycache__/
 # Ung vien dataset, du lieu nguon cac tram va audit (chi luu tren may, khoang 5.4 GB)
 candidate_dataset/
 
-# Checkpoint mo hinh (lon); config, history, metrics van duoc commit
-artifacts/runs/*/model.pt
+# Checkpoint mo hinh cua cac lan chay dung som (nhieu, tai tao duoc); config, history, metrics van duoc commit.
+# Mo hinh da cham test (runs/<mo hinh>_<cau hinh>/final/) duoc commit vi test chi cham mot lan: phan tich sai so va anh huong can chung.
+artifacts/runs/**/model.pt
+!artifacts/runs/*/final/*/model.pt

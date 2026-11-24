@@ -1,4 +1,4 @@
-"""Căn cứ cho kiểm tra miền giá trị và cho quyết định giữ nguyên điểm DO đột biến một mốc (dataset/LAM_SACH.md, mục 3 và 6).
+"""Căn cứ cho kiểm tra miền giá trị và cho quyết định giữ nguyên điểm DO đột biến một mốc (docs/02_DATA_CLEANING.md, mục 3 và 6).
 
 Ghi vào artifacts/dataset/:
   cleaning_summary_train.csv: số giá trị ngoài miền (cả ba tập) và phân vị bước thay đổi 15 phút trên train,

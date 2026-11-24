@@ -1,4 +1,4 @@
-"""Phân bố khoảng trống thật của dataset (dataset/LAM_SACH.md mục 4.1).
+"""Phân bố khoảng trống thật của dataset (docs/02_DATA_CLEANING.md mục 4.1).
 
 Tính trên sáu biến và cả ba tập, trước làm sạch. Ghi vào artifacts/dataset/:
   gap_length_histogram.csv và .png: số khoảng trống và phần thời gian trống theo nhóm độ dài.

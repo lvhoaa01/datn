@@ -1,11 +1,13 @@
-"""Hình minh họa cho dataset/README.md và dataset/LAM_SACH.md.
+"""Hình minh họa cho docs/01_DATASET_ANALYSIS.md và docs/02_DATA_CLEANING.md.
 
 Ghi vào artifacts/dataset/:
-  fig_toan_chuoi.png: DO trung bình ngày 2019 đến 2025 theo ba tập, đợt DO dưới 6 mg/L, lần đầu đo ngừng ghi (README 5.1).
-  fig_ngay_dem_mua.png: nhịp ngày đêm theo mùa và các đại lượng theo tháng (README 4.3, 4.4).
-  fig_o_thieu.png: tỉ lệ ô trống theo biến và tập, vị trí các khoảng trống từ 2 giờ (LAM_SACH 4.1).
-  fig_ffill.png: ffill trên một khoảng trống ngắn và một lần ngừng ghi 64.25 giờ, cửa sổ bị bỏ (LAM_SACH 4.2).
-  fig_dot_bien.png: điểm DO đột biến một mốc ngày 2025-08-14 (LAM_SACH 6).
+  fig_toan_chuoi.png: DO trung bình ngày 2019 đến 2025 theo ba tập, đợt DO dưới 6 mg/L, lần đầu đo ngừng ghi (01_DATASET_ANALYSIS 4).
+  fig_ngay_dem_mua.png: nhịp ngày đêm theo mùa và các đại lượng theo tháng (01_DATASET_ANALYSIS 3.3, 3.4).
+  fig_o_thieu.png: tỉ lệ ô trống theo biến và tập, vị trí các khoảng trống từ 2 giờ (02_DATA_CLEANING 4.1).
+  fig_ffill.png: ffill trên một khoảng trống ngắn và một lần ngừng ghi 64.25 giờ, cửa sổ bị bỏ (02_DATA_CLEANING 4.2).
+  fig_dot_bien.png: điểm DO đột biến một mốc ngày 2025-08-14 (02_DATA_CLEANING 6).
+  fig_dien_bien.png: năm biến theo ngày 2019 đến 2025 cùng các sự kiện (01_DATASET_ANALYSIS 3.5).
+  fig_su_kien.png: ba sự kiện điển hình theo mốc 15 phút: tảo nở hoa, DO thấp nhất, độ đục cao nhất (01_DATASET_ANALYSIS 3.5).
 Đọc raw/, base_splits/ và các bảng của describe_dataset.py, cleaning_study.py, gap_study.py; chạy sau các script đó.
 Chạy từ gốc repo: uv run python scripts/figures.py
 """
@@ -18,8 +20,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from common import (CONFIGS, FEATURES as F, NAMES, SPLITS, STATS as OUT, load_base_all, load_raw_split,  # noqa: E402
-                    window_starts)
+from common import (CONFIGS, FEATURES as F, NAMES, SPLITS, STATS as OUT, do_saturation, load_base_all,  # noqa: E402
+                    load_raw_split, window_starts)
 from describe_dataset import episode_spans, season  # noqa: E402
 
 # màu: mực chữ, mực phụ, lưới, nền; màu phân loại theo thứ tự cố định của bảng màu tham chiếu
@@ -229,14 +231,106 @@ def fig_dot_bien(r):
     save(fig, "fig_dot_bien.png")
 
 
+def periods(months):
+    """Gộp các tháng liền nhau (chuỗi YYYY-MM) thành các đoạn (ngày đầu, ngày cuối)."""
+    out = []
+    for m in sorted(pd.Period(x, "M") for x in months):
+        if out and m == out[-1][1] + 1:
+            out[-1][1] = m
+        else:
+            out.append([m, m])
+    return [(a.start_time, b.end_time) for a, b in out]
+
+
+def fig_dien_bien(r):
+    """Năm biến theo ngày 2019 đến 2025, tô các giai đoạn tảo nở hoa, đánh dấu đợt DO thấp, lũ đục, độ dẫn thấp."""
+    mb = pd.read_csv(os.path.join(OUT, "monthly_by_year.csv"))
+    bloom = periods(mb.loc[mb.chl_mean >= 20, "thang"])
+    lowspc = periods(mb.loc[mb.spc_mean < 120, "thang"])
+    day = r[F].resample("D").mean()
+    fig, axes = plt.subplots(5, 1, figsize=(12, 10.5), sharex=True)
+    rows = [("do_mg_l", "DO (mg/L)"), ("water_temp_c", "Nhiệt độ (độ C)"), ("chl_fluor_ug_l", "Chlorophyll (ug/L)"),
+            ("spc_us_cm", "Độ dẫn (uS/cm)"), ("turbidity_fnu", "Độ đục (FNU)")]
+    for ax, (c, lab) in zip(axes, rows):
+        for a, b in bloom:
+            ax.axvspan(a, b, color=ORANGE, alpha=0.13, linewidth=0)
+        for n in NAMES:
+            ax.axvline(pd.Timestamp(SPLITS[n][0]), color=INK2, lw=0.8, ls=":")
+        ax.plot(day.index, day[c], color=BLUE, lw=1)
+        ax.set_ylabel(lab)
+        ax.margins(x=0.005)
+    ax = axes[0]
+    dd = r["do_mg_l"].resample("D")
+    ax.fill_between(day.index, dd.min(), dd.max(), color=BLUE, alpha=0.18, linewidth=0)
+    ax.axhline(6, color=INK2, lw=0.9, ls="--")
+    do = r["do_mg_l"].to_numpy()
+    for a, l in episode_spans(np.nan_to_num(do, nan=99) < 6):
+        ax.plot(r.index[a + int(np.nanargmin(do[a:a + l]))], np.nanmin(do[a:a + l]), "v", color=RED, ms=6, mec=SURF)
+    ax.plot([], [], "v", color=RED, ms=6, label="đợt DO dưới 6 mg/L")
+    ax.fill_between([], [], [], color=BLUE, alpha=0.18, label="thấp nhất đến cao nhất trong ngày")
+    ax.fill_between([], [], [], color=ORANGE, alpha=0.13, label="tháng tảo nở hoa (chlorophyll TB tháng từ 20 ug/L)")
+    ax.legend(loc="upper left", ncol=3)
+    ax.set_ylim(2, 22)
+    for n in NAMES:
+        a, b = (pd.Timestamp(x) for x in SPLITS[n])
+        axes[2].text(a + (b - a) / 2, 95, n, ha="center", fontsize=9.5, color=INK)
+    for a, b in lowspc:
+        axes[3].annotate("độ dẫn thấp kéo dài", (a + (b - a) / 2, 80), xytext=(0, 18), textcoords="offset points",
+                         ha="center", fontsize=7.5, color=INK2, arrowprops=dict(arrowstyle="-", color=INK2, lw=0.6))
+    top = mb.nlargest(2, "turb_max").sort_values("thang")
+    for (k, v), dx in zip(zip(top.thang, top.turb_max), (-8, 8)):
+        t = pd.Timestamp(k + "-01")
+        y = day.loc[t:t + pd.Timedelta("30D"), "turbidity_fnu"].max()
+        axes[4].annotate(f"độ đục cao {k[5:]}/{k[:4]}", (day.loc[t:t + pd.Timedelta("30D"), "turbidity_fnu"].idxmax(), y),
+                         xytext=(dx, -2), textcoords="offset points", fontsize=7.5, color=INK2, va="top",
+                         ha="right" if dx < 0 else "left")
+    axes[0].set_title("Diễn biến 2019 đến 2025 (trung bình ngày); đường chấm là ranh giới train, val, test")
+    axes[-1].xaxis.set_major_locator(mdates.YearLocator())
+    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    fig.tight_layout()
+    save(fig, "fig_dien_bien.png")
+
+
+def fig_su_kien(r):
+    """Ba sự kiện điển hình, mỗi sự kiện 7 ngày theo mốc 15 phút: tảo nở hoa (DO cao nhất của val),
+    DO thấp nhất chuỗi, độ đục cao nhất chuỗi."""
+    sat = do_saturation(r["water_temp_c"], r["spc_us_cm"].ffill())
+    events = [("Tảo nở hoa", r.loc["2024-06":"2024-08", "do_mg_l"].idxmax()),
+              ("DO thấp nhất chuỗi", r["do_mg_l"].idxmin()),
+              ("Độ đục cao nhất chuỗi", r["turbidity_fnu"].idxmax())]
+    rows = [("do_mg_l", "DO (mg/L)"), ("water_temp_c", "Nhiệt độ (độ C)"), ("chl_fluor_ug_l", "Chlorophyll (ug/L)"),
+            ("ph", "pH"), ("turbidity_fnu", "Độ đục (FNU)")]
+    fig, axes = plt.subplots(len(rows), 3, figsize=(12, 10), sharex="col")
+    for j, (name, t) in enumerate(events):
+        a, b = t - pd.Timedelta("4D"), t + pd.Timedelta("3D")
+        x = r.loc[a:b]
+        for i, (c, lab) in enumerate(rows):
+            ax = axes[i, j]
+            ax.plot(x.index, x[c], color=BLUE, lw=1)
+            if c == "do_mg_l":
+                ax.plot(x.index, sat.loc[a:b], color=INK2, lw=1, ls="--", label="DO bão hòa")
+                ax.axhline(6, color=RED, lw=0.8, ls=":")
+                ax.legend(loc="upper left")
+            ax.axvline(t, color=ORANGE, lw=1)
+            if j == 0:
+                ax.set_ylabel(lab)
+        axes[0, j].set_title(f"{name}: {t:%Y-%m-%d %H:%M}")
+        axes[-1, j].xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
+        axes[-1, j].xaxis.set_major_locator(mdates.DayLocator(interval=2))
+    fig.tight_layout()
+    save(fig, "fig_su_kien.png")
+
+
 def main():
-    """Vẽ và ghi năm hình."""
+    """Vẽ và ghi bảy hình."""
     r = raw_all()
     fig_toan_chuoi(r)
     fig_ngay_dem_mua(r)
     fig_o_thieu()
     fig_ffill(r)
     fig_dot_bien(r)
+    fig_dien_bien(r)
+    fig_su_kien(r)
     print("written to", OUT)
 
 

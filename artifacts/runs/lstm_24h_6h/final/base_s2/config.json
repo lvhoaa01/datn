@@ -1,0 +1,34 @@
+{
+ "model": "lstm",
+ "cfg": "24h_6h",
+ "hidden": 128,
+ "layers": 2,
+ "dropout": 0.3,
+ "lr": 0.001,
+ "weight_decay": 0.0001,
+ "batch": 256,
+ "clip": 1.0,
+ "features": "base",
+ "seed": 2,
+ "final": true,
+ "epochs": 7,
+ "fit_on": [
+  "train",
+  "val"
+ ],
+ "val_runs": [
+  "tuning/lr0.001_h128_do0.3_s0",
+  "tuning/lr0.001_h128_do0.3_s1",
+  "tuning/lr0.001_h128_do0.3_s2"
+ ],
+ "n_in": 96,
+ "n_out": 24,
+ "n_feat": 12,
+ "n_params": 207896,
+ "device": "NVIDIA GeForce RTX 4050 Laptop GPU",
+ "du_lieu_sha256": "0fe13fcdb7911a34",
+ "so_cua_so_huan_luyen": 215530,
+ "so_cua_so_test": 26377,
+ "git_commit": "bf5fb3d",
+ "git_dirty": true
+}

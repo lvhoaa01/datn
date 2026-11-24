@@ -1,0 +1,577 @@
+bo,muc_tieu,dieu_kien,so_cua_so,nhom,ti_trong_pct
+E1,15 phút,toàn bộ test,6595,DO,86.05963
+E1,15 phút,toàn bộ test,6595,Nhiệt độ,3.67071
+E1,15 phút,toàn bộ test,6595,pH,2.665664
+E1,15 phút,toàn bộ test,6595,Độ dẫn,1.685151
+E1,15 phút,toàn bộ test,6595,Độ đục,1.745812
+E1,15 phút,toàn bộ test,6595,Chlorophyll,4.03473
+E1,15 phút,toàn bộ test,6595,Cờ điền,0.138314
+E1,3 giờ,toàn bộ test,6595,DO,68.01581
+E1,3 giờ,toàn bộ test,6595,Nhiệt độ,9.924004
+E1,3 giờ,toàn bộ test,6595,pH,5.160997
+E1,3 giờ,toàn bộ test,6595,Độ dẫn,3.181621
+E1,3 giờ,toàn bộ test,6595,Độ đục,4.018324
+E1,3 giờ,toàn bộ test,6595,Chlorophyll,9.454156
+E1,3 giờ,toàn bộ test,6595,Cờ điền,0.245079
+E1,6 giờ,toàn bộ test,6595,DO,59.384502
+E1,6 giờ,toàn bộ test,6595,Nhiệt độ,12.819435
+E1,6 giờ,toàn bộ test,6595,pH,6.480861
+E1,6 giờ,toàn bộ test,6595,Độ dẫn,3.930398
+E1,6 giờ,toàn bộ test,6595,Độ đục,5.313282
+E1,6 giờ,toàn bộ test,6595,Chlorophyll,11.738446
+E1,6 giờ,toàn bộ test,6595,Cờ điền,0.333076
+E1,15 phút,nước dưới 18 độ C,2128,DO,91.13979
+E1,15 phút,nước dưới 18 độ C,2128,Nhiệt độ,2.077813
+E1,15 phút,nước dưới 18 độ C,2128,pH,1.58963
+E1,15 phút,nước dưới 18 độ C,2128,Độ dẫn,1.519207
+E1,15 phút,nước dưới 18 độ C,2128,Độ đục,1.767736
+E1,15 phút,nước dưới 18 độ C,2128,Chlorophyll,1.720788
+E1,15 phút,nước dưới 18 độ C,2128,Cờ điền,0.185037
+E1,3 giờ,nước dưới 18 độ C,2128,DO,78.96187
+E1,3 giờ,nước dưới 18 độ C,2128,Nhiệt độ,6.107387
+E1,3 giờ,nước dưới 18 độ C,2128,pH,2.632744
+E1,3 giờ,nước dưới 18 độ C,2128,Độ dẫn,2.633566
+E1,3 giờ,nước dưới 18 độ C,2128,Độ đục,5.354764
+E1,3 giờ,nước dưới 18 độ C,2128,Chlorophyll,3.98301
+E1,3 giờ,nước dưới 18 độ C,2128,Cờ điền,0.326664
+E1,6 giờ,nước dưới 18 độ C,2128,DO,70.19071
+E1,6 giờ,nước dưới 18 độ C,2128,Nhiệt độ,8.161747
+E1,6 giờ,nước dưới 18 độ C,2128,pH,3.835322
+E1,6 giờ,nước dưới 18 độ C,2128,Độ dẫn,3.872932
+E1,6 giờ,nước dưới 18 độ C,2128,Độ đục,7.626684
+E1,6 giờ,nước dưới 18 độ C,2128,Chlorophyll,5.848295
+E1,6 giờ,nước dưới 18 độ C,2128,Cờ điền,0.464312
+E1,15 phút,nước 18 đến 24 độ C,2581,DO,89.90751
+E1,15 phút,nước 18 đến 24 độ C,2581,Nhiệt độ,2.20546
+E1,15 phút,nước 18 đến 24 độ C,2581,pH,2.056425
+E1,15 phút,nước 18 đến 24 độ C,2581,Độ dẫn,1.384019
+E1,15 phút,nước 18 đến 24 độ C,2581,Độ đục,1.372609
+E1,15 phút,nước 18 đến 24 độ C,2581,Chlorophyll,2.936969
+E1,15 phút,nước 18 đến 24 độ C,2581,Cờ điền,0.137016
+E1,3 giờ,nước 18 đến 24 độ C,2581,DO,74.62437
+E1,3 giờ,nước 18 đến 24 độ C,2581,Nhiệt độ,6.900406
+E1,3 giờ,nước 18 đến 24 độ C,2581,pH,4.789676
+E1,3 giờ,nước 18 đến 24 độ C,2581,Độ dẫn,2.512233
+E1,3 giờ,nước 18 đến 24 độ C,2581,Độ đục,3.397357
+E1,3 giờ,nước 18 đến 24 độ C,2581,Chlorophyll,7.508869
+E1,3 giờ,nước 18 đến 24 độ C,2581,Cờ điền,0.26709
+E1,6 giờ,nước 18 đến 24 độ C,2581,DO,64.77874
+E1,6 giờ,nước 18 đến 24 độ C,2581,Nhiệt độ,10.11636
+E1,6 giờ,nước 18 đến 24 độ C,2581,pH,6.422418
+E1,6 giờ,nước 18 đến 24 độ C,2581,Độ dẫn,3.126758
+E1,6 giờ,nước 18 đến 24 độ C,2581,Độ đục,4.629763
+E1,6 giờ,nước 18 đến 24 độ C,2581,Chlorophyll,10.551728
+E1,6 giờ,nước 18 đến 24 độ C,2581,Cờ điền,0.374233
+E1,15 phút,nước từ 24 độ C,1886,DO,81.345024
+E1,15 phút,nước từ 24 độ C,1886,Nhiệt độ,5.34344
+E1,15 phút,nước từ 24 độ C,1886,pH,3.509831
+E1,15 phút,nước từ 24 độ C,1886,Độ dẫn,1.969628
+E1,15 phút,nước từ 24 độ C,1886,Độ đục,2.013977
+E1,15 phút,nước từ 24 độ C,1886,Chlorophyll,5.695896
+E1,15 phút,nước từ 24 độ C,1886,Cờ điền,0.122211
+E1,3 giờ,nước từ 24 độ C,1886,DO,60.226425
+E1,3 giờ,nước từ 24 độ C,1886,Nhiệt độ,13.110219
+E1,3 giờ,nước từ 24 độ C,1886,pH,6.21316
+E1,3 giờ,nước từ 24 độ C,1886,Độ dẫn,3.791903
+E1,3 giờ,nước từ 24 độ C,1886,Độ đục,3.996783
+E1,3 giờ,nước từ 24 độ C,1886,Chlorophyll,12.456711
+E1,3 giờ,nước từ 24 độ C,1886,Cờ điền,0.204795
+E1,6 giờ,nước từ 24 độ C,1886,DO,52.539337
+E1,6 giờ,nước từ 24 độ C,1886,Nhiệt độ,16.018135
+E1,6 giờ,nước từ 24 độ C,1886,pH,7.328372
+E1,6 giờ,nước từ 24 độ C,1886,Độ dẫn,4.48295
+E1,6 giờ,nước từ 24 độ C,1886,Độ đục,5.051155
+E1,6 giờ,nước từ 24 độ C,1886,Chlorophyll,14.314297
+E1,6 giờ,nước từ 24 độ C,1886,Cờ điền,0.265756
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,DO,84.8171
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,3.46426
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,pH,2.836822
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,1.536338
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,Độ đục,1.512319
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,5.761673
+E1,15 phút,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.071483
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,DO,66.258514
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,8.528935
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,pH,5.345387
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,3.07255
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ đục,3.176984
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,13.484928
+E1,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.132696
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,DO,59.149673
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,10.982564
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,pH,6.29978
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,3.621663
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ đục,3.83546
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,15.93806
+E1,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.172803
+E1,15 phút,ban đêm,3108,DO,86.37246
+E1,15 phút,ban đêm,3108,Nhiệt độ,3.896229
+E1,15 phút,ban đêm,3108,pH,2.45977
+E1,15 phút,ban đêm,3108,Độ dẫn,1.60868
+E1,15 phút,ban đêm,3108,Độ đục,1.658321
+E1,15 phút,ban đêm,3108,Chlorophyll,3.870191
+E1,15 phút,ban đêm,3108,Cờ điền,0.134349
+E1,3 giờ,ban đêm,3108,DO,70.3988
+E1,3 giờ,ban đêm,3108,Nhiệt độ,10.471004
+E1,3 giờ,ban đêm,3108,pH,4.539336
+E1,3 giờ,ban đêm,3108,Độ dẫn,2.882026
+E1,3 giờ,ban đêm,3108,Độ đục,3.732036
+E1,3 giờ,ban đêm,3108,Chlorophyll,7.747111
+E1,3 giờ,ban đêm,3108,Cờ điền,0.229686
+E1,6 giờ,ban đêm,3108,DO,62.46465
+E1,6 giờ,ban đêm,3108,Nhiệt độ,12.888303
+E1,6 giờ,ban đêm,3108,pH,5.823913
+E1,6 giờ,ban đêm,3108,Độ dẫn,3.528626
+E1,6 giờ,ban đêm,3108,Độ đục,4.911883
+E1,6 giờ,ban đêm,3108,Chlorophyll,10.052033
+E1,6 giờ,ban đêm,3108,Cờ điền,0.330597
+E1,15 phút,ban ngày,3487,DO,85.83441
+E1,15 phút,ban ngày,3487,Nhiệt độ,3.504682
+E1,15 phút,ban ngày,3487,pH,2.815749
+E1,15 phút,ban ngày,3487,Độ dẫn,1.740104
+E1,15 phút,ban ngày,3487,Độ đục,1.80894
+E1,15 phút,ban ngày,3487,Chlorophyll,4.154924
+E1,15 phút,ban ngày,3487,Cờ điền,0.1412
+E1,3 giờ,ban ngày,3487,DO,66.37796
+E1,3 giờ,ban ngày,3487,Nhiệt độ,9.519122
+E1,3 giờ,ban ngày,3487,pH,5.597594
+E1,3 giờ,ban ngày,3487,Độ dẫn,3.384968
+E1,3 giờ,ban ngày,3487,Độ đục,4.21975
+E1,3 giờ,ban ngày,3487,Chlorophyll,10.64524
+E1,3 giờ,ban ngày,3487,Cờ điền,0.255367
+E1,6 giờ,ban ngày,3487,DO,57.284393
+E1,6 giờ,ban ngày,3487,Nhiệt độ,12.744908
+E1,6 giờ,ban ngày,3487,pH,6.940984
+E1,6 giờ,ban ngày,3487,Độ dẫn,4.202476
+E1,6 giờ,ban ngày,3487,Độ đục,5.591856
+E1,6 giờ,ban ngày,3487,Chlorophyll,12.900906
+E1,6 giờ,ban ngày,3487,Cờ điền,0.334476
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,DO,90.99844
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,4.152564
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,pH,1.555021
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,0.813306
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,Độ đục,1.086608
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,1.360902
+E1,15 phút,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.033142
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,DO,74.44089
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,13.136779
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,pH,4.254238
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,1.886959
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,Độ đục,2.96955
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,3.217872
+E1,3 giờ,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.09372
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,DO,63.110477
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,19.016932
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,pH,5.021062
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,4.052955
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,Độ đục,3.863511
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,4.803469
+E1,6 giờ,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.131589
+E2,15 phút,toàn bộ test,6595,DO,26.029213
+E2,15 phút,toàn bộ test,6595,Nhiệt độ,15.932732
+E2,15 phút,toàn bộ test,6595,pH,1.343578
+E2,15 phút,toàn bộ test,6595,Độ dẫn,0.566552
+E2,15 phút,toàn bộ test,6595,Độ đục,0.531377
+E2,15 phút,toàn bộ test,6595,Chlorophyll,1.997944
+E2,15 phút,toàn bộ test,6595,Bão hòa,31.679968
+E2,15 phút,toàn bộ test,6595,Ánh sáng,1.131632
+E2,15 phút,toàn bộ test,6595,"Quang hợp, hô hấp",2.878982
+E2,15 phút,toàn bộ test,6595,Chu kỳ ngày của DO,4.035444
+E2,15 phút,toàn bộ test,6595,Thay đổi ngắn hạn,7.208706
+E2,15 phút,toàn bộ test,6595,Cacbonat,1.117033
+E2,15 phút,toàn bộ test,6595,Tảo,1.395643
+E2,15 phút,toàn bộ test,6595,Vận chuyển,0.457502
+E2,15 phút,toàn bộ test,6595,Triều,1.291573
+E2,15 phút,toàn bộ test,6595,Lịch,2.361576
+E2,15 phút,toàn bộ test,6595,Cờ điền,0.040542
+E2,3 giờ,toàn bộ test,6595,DO,19.899323
+E2,3 giờ,toàn bộ test,6595,Nhiệt độ,14.328242
+E2,3 giờ,toàn bộ test,6595,pH,2.146259
+E2,3 giờ,toàn bộ test,6595,Độ dẫn,0.998074
+E2,3 giờ,toàn bộ test,6595,Độ đục,0.845968
+E2,3 giờ,toàn bộ test,6595,Chlorophyll,2.767944
+E2,3 giờ,toàn bộ test,6595,Bão hòa,21.193123
+E2,3 giờ,toàn bộ test,6595,Ánh sáng,1.721161
+E2,3 giờ,toàn bộ test,6595,"Quang hợp, hô hấp",6.660937
+E2,3 giờ,toàn bộ test,6595,Chu kỳ ngày của DO,11.705333
+E2,3 giờ,toàn bộ test,6595,Thay đổi ngắn hạn,4.957092
+E2,3 giờ,toàn bộ test,6595,Cacbonat,1.314176
+E2,3 giờ,toàn bộ test,6595,Tảo,1.611386
+E2,3 giờ,toàn bộ test,6595,Vận chuyển,0.739916
+E2,3 giờ,toàn bộ test,6595,Triều,2.849895
+E2,3 giờ,toàn bộ test,6595,Lịch,6.21848
+E2,3 giờ,toàn bộ test,6595,Cờ điền,0.04269
+E2,6 giờ,toàn bộ test,6595,DO,17.076866
+E2,6 giờ,toàn bộ test,6595,Nhiệt độ,12.710427
+E2,6 giờ,toàn bộ test,6595,pH,2.629322
+E2,6 giờ,toàn bộ test,6595,Độ dẫn,1.013811
+E2,6 giờ,toàn bộ test,6595,Độ đục,0.963664
+E2,6 giờ,toàn bộ test,6595,Chlorophyll,3.059008
+E2,6 giờ,toàn bộ test,6595,Bão hòa,17.526428
+E2,6 giờ,toàn bộ test,6595,Ánh sáng,1.431722
+E2,6 giờ,toàn bộ test,6595,"Quang hợp, hô hấp",5.830767
+E2,6 giờ,toàn bộ test,6595,Chu kỳ ngày của DO,16.38919
+E2,6 giờ,toàn bộ test,6595,Thay đổi ngắn hạn,5.268222
+E2,6 giờ,toàn bộ test,6595,Cacbonat,1.394182
+E2,6 giờ,toàn bộ test,6595,Tảo,1.616727
+E2,6 giờ,toàn bộ test,6595,Vận chuyển,0.95623
+E2,6 giờ,toàn bộ test,6595,Triều,3.241667
+E2,6 giờ,toàn bộ test,6595,Lịch,8.847039
+E2,6 giờ,toàn bộ test,6595,Cờ điền,0.044725
+E2,15 phút,nước dưới 18 độ C,2128,DO,29.464468
+E2,15 phút,nước dưới 18 độ C,2128,Nhiệt độ,12.004828
+E2,15 phút,nước dưới 18 độ C,2128,pH,0.758516
+E2,15 phút,nước dưới 18 độ C,2128,Độ dẫn,0.599997
+E2,15 phút,nước dưới 18 độ C,2128,Độ đục,0.922637
+E2,15 phút,nước dưới 18 độ C,2128,Chlorophyll,1.008554
+E2,15 phút,nước dưới 18 độ C,2128,Bão hòa,37.362896
+E2,15 phút,nước dưới 18 độ C,2128,Ánh sáng,1.566826
+E2,15 phút,nước dưới 18 độ C,2128,"Quang hợp, hô hấp",2.387014
+E2,15 phút,nước dưới 18 độ C,2128,Chu kỳ ngày của DO,2.242542
+E2,15 phút,nước dưới 18 độ C,2128,Thay đổi ngắn hạn,5.341925
+E2,15 phút,nước dưới 18 độ C,2128,Cacbonat,0.793121
+E2,15 phút,nước dưới 18 độ C,2128,Tảo,0.764578
+E2,15 phút,nước dưới 18 độ C,2128,Vận chuyển,0.565176
+E2,15 phút,nước dưới 18 độ C,2128,Triều,1.424236
+E2,15 phút,nước dưới 18 độ C,2128,Lịch,2.730005
+E2,15 phút,nước dưới 18 độ C,2128,Cờ điền,0.062683
+E2,3 giờ,nước dưới 18 độ C,2128,DO,24.122496
+E2,3 giờ,nước dưới 18 độ C,2128,Nhiệt độ,11.550843
+E2,3 giờ,nước dưới 18 độ C,2128,pH,1.277142
+E2,3 giờ,nước dưới 18 độ C,2128,Độ dẫn,0.990112
+E2,3 giờ,nước dưới 18 độ C,2128,Độ đục,1.771706
+E2,3 giờ,nước dưới 18 độ C,2128,Chlorophyll,1.388034
+E2,3 giờ,nước dưới 18 độ C,2128,Bão hòa,27.11055
+E2,3 giờ,nước dưới 18 độ C,2128,Ánh sáng,1.694513
+E2,3 giờ,nước dưới 18 độ C,2128,"Quang hợp, hô hấp",6.255354
+E2,3 giờ,nước dưới 18 độ C,2128,Chu kỳ ngày của DO,6.379305
+E2,3 giờ,nước dưới 18 độ C,2128,Thay đổi ngắn hạn,4.320406
+E2,3 giờ,nước dưới 18 độ C,2128,Cacbonat,0.830258
+E2,3 giờ,nước dưới 18 độ C,2128,Tảo,0.932431
+E2,3 giờ,nước dưới 18 độ C,2128,Vận chuyển,0.794743
+E2,3 giờ,nước dưới 18 độ C,2128,Triều,3.53209
+E2,3 giờ,nước dưới 18 độ C,2128,Lịch,6.989903
+E2,3 giờ,nước dưới 18 độ C,2128,Cờ điền,0.060114
+E2,6 giờ,nước dưới 18 độ C,2128,DO,21.169703
+E2,6 giờ,nước dưới 18 độ C,2128,Nhiệt độ,10.356856
+E2,6 giờ,nước dưới 18 độ C,2128,pH,1.745651
+E2,6 giờ,nước dưới 18 độ C,2128,Độ dẫn,1.002333
+E2,6 giờ,nước dưới 18 độ C,2128,Độ đục,2.223222
+E2,6 giờ,nước dưới 18 độ C,2128,Chlorophyll,1.578064
+E2,6 giờ,nước dưới 18 độ C,2128,Bão hòa,22.659477
+E2,6 giờ,nước dưới 18 độ C,2128,Ánh sáng,1.47955
+E2,6 giờ,nước dưới 18 độ C,2128,"Quang hợp, hô hấp",5.85462
+E2,6 giờ,nước dưới 18 độ C,2128,Chu kỳ ngày của DO,9.297872
+E2,6 giờ,nước dưới 18 độ C,2128,Thay đổi ngắn hạn,4.369845
+E2,6 giờ,nước dưới 18 độ C,2128,Cacbonat,0.935945
+E2,6 giờ,nước dưới 18 độ C,2128,Tảo,0.975804
+E2,6 giờ,nước dưới 18 độ C,2128,Vận chuyển,1.077235
+E2,6 giờ,nước dưới 18 độ C,2128,Triều,4.042064
+E2,6 giờ,nước dưới 18 độ C,2128,Lịch,11.167584
+E2,6 giờ,nước dưới 18 độ C,2128,Cờ điền,0.06417
+E2,15 phút,nước 18 đến 24 độ C,2581,DO,27.941292
+E2,15 phút,nước 18 đến 24 độ C,2581,Nhiệt độ,14.287374
+E2,15 phút,nước 18 đến 24 độ C,2581,pH,1.131141
+E2,15 phút,nước 18 đến 24 độ C,2581,Độ dẫn,0.434988
+E2,15 phút,nước 18 đến 24 độ C,2581,Độ đục,0.502915
+E2,15 phút,nước 18 đến 24 độ C,2581,Chlorophyll,1.642933
+E2,15 phút,nước 18 đến 24 độ C,2581,Bão hòa,31.502157
+E2,15 phút,nước 18 đến 24 độ C,2581,Ánh sáng,1.394476
+E2,15 phút,nước 18 đến 24 độ C,2581,"Quang hợp, hô hấp",2.803633
+E2,15 phút,nước 18 đến 24 độ C,2581,Chu kỳ ngày của DO,3.704494
+E2,15 phút,nước 18 đến 24 độ C,2581,Thay đổi ngắn hạn,8.155051
+E2,15 phút,nước 18 đến 24 độ C,2581,Cacbonat,1.286791
+E2,15 phút,nước 18 đến 24 độ C,2581,Tảo,1.33876
+E2,15 phút,nước 18 đến 24 độ C,2581,Vận chuyển,0.46449
+E2,15 phút,nước 18 đến 24 độ C,2581,Triều,1.172906
+E2,15 phút,nước 18 đến 24 độ C,2581,Lịch,2.192891
+E2,15 phút,nước 18 đến 24 độ C,2581,Cờ điền,0.043715
+E2,3 giờ,nước 18 đến 24 độ C,2581,DO,21.311377
+E2,3 giờ,nước 18 đến 24 độ C,2581,Nhiệt độ,12.282489
+E2,3 giờ,nước 18 đến 24 độ C,2581,pH,1.784522
+E2,3 giờ,nước 18 đến 24 độ C,2581,Độ dẫn,0.809515
+E2,3 giờ,nước 18 đến 24 độ C,2581,Độ đục,0.828911
+E2,3 giờ,nước 18 đến 24 độ C,2581,Chlorophyll,2.396895
+E2,3 giờ,nước 18 đến 24 độ C,2581,Bão hòa,21.834326
+E2,3 giờ,nước 18 đến 24 độ C,2581,Ánh sáng,1.640883
+E2,3 giờ,nước 18 đến 24 độ C,2581,"Quang hợp, hô hấp",7.055354
+E2,3 giờ,nước 18 đến 24 độ C,2581,Chu kỳ ngày của DO,11.924825
+E2,3 giờ,nước 18 đến 24 độ C,2581,Thay đổi ngắn hạn,5.511702
+E2,3 giờ,nước 18 đến 24 độ C,2581,Cacbonat,1.368332
+E2,3 giờ,nước 18 đến 24 độ C,2581,Tảo,1.519137
+E2,3 giờ,nước 18 đến 24 độ C,2581,Vận chuyển,0.804816
+E2,3 giờ,nước 18 đến 24 độ C,2581,Triều,2.551438
+E2,3 giờ,nước 18 đến 24 độ C,2581,Lịch,6.32974
+E2,3 giờ,nước 18 đến 24 độ C,2581,Cờ điền,0.045738
+E2,6 giờ,nước 18 đến 24 độ C,2581,DO,17.547712
+E2,6 giờ,nước 18 đến 24 độ C,2581,Nhiệt độ,10.630425
+E2,6 giờ,nước 18 đến 24 độ C,2581,pH,2.207944
+E2,6 giờ,nước 18 đến 24 độ C,2581,Độ dẫn,0.884825
+E2,6 giờ,nước 18 đến 24 độ C,2581,Độ đục,0.947683
+E2,6 giờ,nước 18 đến 24 độ C,2581,Chlorophyll,2.543333
+E2,6 giờ,nước 18 đến 24 độ C,2581,Bão hòa,17.336048
+E2,6 giờ,nước 18 đến 24 độ C,2581,Ánh sáng,1.413495
+E2,6 giờ,nước 18 đến 24 độ C,2581,"Quang hợp, hô hấp",6.16881
+E2,6 giờ,nước 18 đến 24 độ C,2581,Chu kỳ ngày của DO,17.646791
+E2,6 giờ,nước 18 đến 24 độ C,2581,Thay đổi ngắn hạn,5.813627
+E2,6 giờ,nước 18 đến 24 độ C,2581,Cacbonat,1.469053
+E2,6 giờ,nước 18 đến 24 độ C,2581,Tảo,1.57753
+E2,6 giờ,nước 18 đến 24 độ C,2581,Vận chuyển,1.039167
+E2,6 giờ,nước 18 đến 24 độ C,2581,Triều,2.994014
+E2,6 giờ,nước 18 đến 24 độ C,2581,Lịch,9.733115
+E2,6 giờ,nước 18 đến 24 độ C,2581,Cờ điền,0.046425
+E2,15 phút,nước từ 24 độ C,1886,DO,23.571138
+E2,15 phút,nước từ 24 độ C,1886,Nhiệt độ,18.378996
+E2,15 phút,nước từ 24 độ C,1886,pH,1.685878
+E2,15 phút,nước từ 24 độ C,1886,Độ dẫn,0.646061
+E2,15 phút,nước từ 24 độ C,1886,Độ đục,0.421851
+E2,15 phút,nước từ 24 độ C,1886,Chlorophyll,2.571996
+E2,15 phút,nước từ 24 độ C,1886,Bão hòa,29.917847
+E2,15 phút,nước từ 24 độ C,1886,Ánh sáng,0.799513
+E2,15 phút,nước từ 24 độ C,1886,"Quang hợp, hô hấp",3.092947
+E2,15 phút,nước từ 24 độ C,1886,Chu kỳ ngày của DO,4.859494
+E2,15 phút,nước từ 24 độ C,1886,Thay đổi ngắn hạn,7.176558
+E2,15 phút,nước từ 24 độ C,1886,Cacbonat,1.106783
+E2,15 phút,nước từ 24 độ C,1886,Tảo,1.64401
+E2,15 phút,nước từ 24 độ C,1886,Vận chuyển,0.416888
+E2,15 phút,nước từ 24 độ C,1886,Triều,1.328182
+E2,15 phút,nước từ 24 độ C,1886,Lịch,2.350796
+E2,15 phút,nước từ 24 độ C,1886,Cờ điền,0.031071
+E2,3 giờ,nước từ 24 độ C,1886,DO,17.685837
+E2,3 giờ,nước từ 24 độ C,1886,Nhiệt độ,16.536497
+E2,3 giờ,nước từ 24 độ C,1886,pH,2.649275
+E2,3 giờ,nước từ 24 độ C,1886,Độ dẫn,1.127056
+E2,3 giờ,nước từ 24 độ C,1886,Độ đục,0.581485
+E2,3 giờ,nước từ 24 độ C,1886,Chlorophyll,3.432199
+E2,3 giờ,nước từ 24 độ C,1886,Bão hòa,18.993195
+E2,3 giờ,nước từ 24 độ C,1886,Ánh sáng,1.782175
+E2,3 giờ,nước từ 24 độ C,1886,"Quang hợp, hô hấp",6.515949
+E2,3 giờ,nước từ 24 độ C,1886,Chu kỳ ngày của DO,13.150218
+E2,3 giờ,nước từ 24 độ C,1886,Thay đổi ngắn hạn,4.775098
+E2,3 giờ,nước từ 24 độ C,1886,Cacbonat,1.421473
+E2,3 giờ,nước từ 24 độ C,1886,Tảo,1.875644
+E2,3 giờ,nước từ 24 độ C,1886,Vận chuyển,0.679768
+E2,3 giờ,nước từ 24 độ C,1886,Triều,2.847425
+E2,3 giờ,nước từ 24 độ C,1886,Lịch,5.911214
+E2,3 giờ,nước từ 24 độ C,1886,Cờ điền,0.035498
+E2,6 giờ,nước từ 24 độ C,1886,DO,15.503522
+E2,6 giờ,nước từ 24 độ C,1886,Nhiệt độ,14.908855
+E2,6 giờ,nước từ 24 độ C,1886,pH,3.197942
+E2,6 giờ,nước từ 24 độ C,1886,Độ dẫn,1.10982
+E2,6 giờ,nước từ 24 độ C,1886,Độ đục,0.595299
+E2,6 giờ,nước từ 24 độ C,1886,Chlorophyll,3.877514
+E2,6 giờ,nước từ 24 độ C,1886,Bão hòa,16.111906
+E2,6 giờ,nước từ 24 độ C,1886,Ánh sáng,1.429888
+E2,6 giờ,nước từ 24 độ C,1886,"Quang hợp, hô hấp",5.5828
+E2,6 giờ,nước từ 24 độ C,1886,Chu kỳ ngày của DO,17.628647
+E2,6 giờ,nước từ 24 độ C,1886,Thay đổi ngắn hạn,5.14963
+E2,6 giờ,nước từ 24 độ C,1886,Cacbonat,1.47828
+E2,6 giờ,nước từ 24 độ C,1886,Tảo,1.838699
+E2,6 giờ,nước từ 24 độ C,1886,Vận chuyển,0.85995
+E2,6 giờ,nước từ 24 độ C,1886,Triều,3.178153
+E2,6 giờ,nước từ 24 độ C,1886,Lịch,7.511463
+E2,6 giờ,nước từ 24 độ C,1886,Cờ điền,0.037628
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,DO,26.65148
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,10.680236
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,pH,1.661374
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,0.440894
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Độ đục,0.280242
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,3.204039
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Bão hòa,37.33411
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Ánh sáng,0.77364
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,"Quang hợp, hô hấp",3.332702
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Chu kỳ ngày của DO,3.936581
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Thay đổi ngắn hạn,5.963818
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Cacbonat,0.885912
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Tảo,2.059488
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Vận chuyển,0.42945
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Triều,0.864454
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Lịch,1.481698
+E2,15 phút,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.019881
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,DO,21.219421
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,10.428308
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,pH,2.413789
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,0.797001
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ đục,0.438211
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,4.94646
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Bão hòa,25.20691
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Ánh sáng,1.227758
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,"Quang hợp, hô hấp",7.274763
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Chu kỳ ngày của DO,11.799957
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Thay đổi ngắn hạn,4.377826
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Cacbonat,1.171624
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Tảo,2.006608
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Vận chuyển,0.782552
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Triều,1.772131
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Lịch,4.114987
+E2,3 giờ,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.021697
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,DO,18.997526
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Nhiệt độ,9.762691
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,pH,3.025559
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ dẫn,0.760253
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Độ đục,0.482586
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Chlorophyll,5.513706
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Bão hòa,21.94681
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Ánh sáng,0.931581
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,"Quang hợp, hô hấp",5.88023
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Chu kỳ ngày của DO,16.112953
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Thay đổi ngắn hạn,5.746024
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Cacbonat,1.239181
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Tảo,1.813908
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Vận chuyển,0.916259
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Triều,2.151462
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Lịch,4.699219
+E2,6 giờ,bão hòa từ 130% (tảo nở hoa),789,Cờ điền,0.020054
+E2,15 phút,ban đêm,3108,DO,26.573278
+E2,15 phút,ban đêm,3108,Nhiệt độ,17.276196
+E2,15 phút,ban đêm,3108,pH,1.165451
+E2,15 phút,ban đêm,3108,Độ dẫn,0.542657
+E2,15 phút,ban đêm,3108,Độ đục,0.594612
+E2,15 phút,ban đêm,3108,Chlorophyll,1.821848
+E2,15 phút,ban đêm,3108,Bão hòa,32.659397
+E2,15 phút,ban đêm,3108,Ánh sáng,0.910242
+E2,15 phút,ban đêm,3108,"Quang hợp, hô hấp",1.974141
+E2,15 phút,ban đêm,3108,Chu kỳ ngày của DO,3.416676
+E2,15 phút,ban đêm,3108,Thay đổi ngắn hạn,6.700149
+E2,15 phút,ban đêm,3108,Cacbonat,1.000137
+E2,15 phút,ban đêm,3108,Tảo,1.391436
+E2,15 phút,ban đêm,3108,Vận chuyển,0.447893
+E2,15 phút,ban đêm,3108,Triều,1.324179
+E2,15 phút,ban đêm,3108,Lịch,2.163702
+E2,15 phút,ban đêm,3108,Cờ điền,0.038012
+E2,3 giờ,ban đêm,3108,DO,21.015423
+E2,3 giờ,ban đêm,3108,Nhiệt độ,16.482174
+E2,3 giờ,ban đêm,3108,pH,2.030708
+E2,3 giờ,ban đêm,3108,Độ dẫn,0.982531
+E2,3 giờ,ban đêm,3108,Độ đục,0.828538
+E2,3 giờ,ban đêm,3108,Chlorophyll,2.272754
+E2,3 giờ,ban đêm,3108,Bão hòa,22.648947
+E2,3 giờ,ban đêm,3108,Ánh sáng,1.411552
+E2,3 giờ,ban đêm,3108,"Quang hợp, hô hấp",4.681274
+E2,3 giờ,ban đêm,3108,Chu kỳ ngày của DO,10.396026
+E2,3 giờ,ban đêm,3108,Thay đổi ngắn hạn,4.943336
+E2,3 giờ,ban đêm,3108,Cacbonat,1.176325
+E2,3 giờ,ban đêm,3108,Tảo,1.440233
+E2,3 giờ,ban đêm,3108,Vận chuyển,0.664988
+E2,3 giờ,ban đêm,3108,Triều,3.180904
+E2,3 giờ,ban đêm,3108,Lịch,5.804214
+E2,3 giờ,ban đêm,3108,Cờ điền,0.040078
+E2,6 giờ,ban đêm,3108,DO,18.272402
+E2,6 giờ,ban đêm,3108,Nhiệt độ,14.888939
+E2,6 giờ,ban đêm,3108,pH,2.856371
+E2,6 giờ,ban đêm,3108,Độ dẫn,0.991558
+E2,6 giờ,ban đêm,3108,Độ đục,1.027378
+E2,6 giờ,ban đêm,3108,Chlorophyll,3.021742
+E2,6 giờ,ban đêm,3108,Bão hòa,19.003134
+E2,6 giờ,ban đêm,3108,Ánh sáng,1.154857
+E2,6 giờ,ban đêm,3108,"Quang hợp, hô hấp",4.686277
+E2,6 giờ,ban đêm,3108,Chu kỳ ngày của DO,13.889774
+E2,6 giờ,ban đêm,3108,Thay đổi ngắn hạn,4.778302
+E2,6 giờ,ban đêm,3108,Cacbonat,1.351097
+E2,6 giờ,ban đêm,3108,Tảo,1.540857
+E2,6 giờ,ban đêm,3108,Vận chuyển,0.853021
+E2,6 giờ,ban đêm,3108,Triều,3.624445
+E2,6 giờ,ban đêm,3108,Lịch,8.0165
+E2,6 giờ,ban đêm,3108,Cờ điền,0.043348
+E2,15 phút,ban ngày,3487,DO,25.621965
+E2,15 phút,ban ngày,3487,Nhiệt độ,14.913766
+E2,15 phút,ban ngày,3487,pH,1.479142
+E2,15 phút,ban ngày,3487,Độ dẫn,0.584422
+E2,15 phút,ban ngày,3487,Độ đục,0.483814
+E2,15 phút,ban ngày,3487,Chlorophyll,2.130875
+E2,15 phút,ban ngày,3487,Bão hòa,30.94806
+E2,15 phút,ban ngày,3487,Ánh sáng,1.298862
+E2,15 phút,ban ngày,3487,"Quang hợp, hô hấp",3.55776
+E2,15 phút,ban ngày,3487,Chu kỳ ngày của DO,4.493328
+E2,15 phút,ban ngày,3487,Thay đổi ngắn hạn,7.597231
+E2,15 phút,ban ngày,3487,Cacbonat,1.205446
+E2,15 phút,ban ngày,3487,Tảo,1.397626
+E2,15 phút,ban ngày,3487,Vận chuyển,0.464538
+E2,15 phút,ban ngày,3487,Triều,1.267959
+E2,15 phút,ban ngày,3487,Lịch,2.512718
+E2,15 phút,ban ngày,3487,Cờ điền,0.042488
+E2,3 giờ,ban ngày,3487,DO,19.096994
+E2,3 giờ,ban ngày,3487,Nhiệt độ,12.775731
+E2,3 giờ,ban ngày,3487,pH,2.229579
+E2,3 giờ,ban ngày,3487,Độ dẫn,1.00874
+E2,3 giờ,ban ngày,3487,Độ đục,0.858624
+E2,3 giờ,ban ngày,3487,Chlorophyll,3.125077
+E2,3 giờ,ban ngày,3487,Bão hòa,20.144133
+E2,3 giờ,ban ngày,3487,Ánh sáng,1.945148
+E2,3 giờ,ban ngày,3487,"Quang hợp, hô hấp",8.087387
+E2,3 giờ,ban ngày,3487,Chu kỳ ngày của DO,12.647828
+E2,3 giờ,ban ngày,3487,Thay đổi ngắn hạn,4.967586
+E2,3 giờ,ban ngày,3487,Cacbonat,1.413168
+E2,3 giờ,ban ngày,3487,Tảo,1.734126
+E2,3 giờ,ban ngày,3487,Vận chuyển,0.793516
+E2,3 giờ,ban ngày,3487,Triều,2.611744
+E2,3 giờ,ban ngày,3487,Lịch,6.516031
+E2,3 giờ,ban ngày,3487,Cờ điền,0.044578
+E2,6 giờ,ban ngày,3487,DO,16.267591
+E2,6 giờ,ban ngày,3487,Nhiệt độ,11.237647
+E2,6 giờ,ban ngày,3487,pH,2.475006
+E2,6 giờ,ban ngày,3487,Độ dẫn,1.029046
+E2,6 giờ,ban ngày,3487,Độ đục,0.920323
+E2,6 giờ,ban ngày,3487,Chlorophyll,3.083746
+E2,6 giờ,ban ngày,3487,Bão hòa,16.527733
+E2,6 giờ,ban ngày,3487,Ánh sáng,1.61875
+E2,6 giờ,ban ngày,3487,"Quang hợp, hô hấp",6.60558
+E2,6 giờ,ban ngày,3487,Chu kỳ ngày của DO,18.07963
+E2,6 giờ,ban ngày,3487,Thay đổi ngắn hạn,5.599628
+E2,6 giờ,ban ngày,3487,Cacbonat,1.423329
+E2,6 giờ,ban ngày,3487,Tảo,1.667437
+E2,6 giờ,ban ngày,3487,Vận chuyển,1.026105
+E2,6 giờ,ban ngày,3487,Triều,2.982446
+E2,6 giờ,ban ngày,3487,Lịch,9.410348
+E2,6 giờ,ban ngày,3487,Cờ điền,0.045659
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,DO,32.44655
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,21.240396
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,pH,0.876132
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,1.036848
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Độ đục,0.347787
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,0.589149
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Bão hòa,25.46596
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Ánh sáng,0.530278
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,"Quang hợp, hô hấp",1.817529
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Chu kỳ ngày của DO,4.193227
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Thay đổi ngắn hạn,5.538316
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Cacbonat,1.003466
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Tảo,0.596631
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Vận chuyển,0.297443
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Triều,1.568927
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Lịch,2.435933
+E2,15 phút,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.015438
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,DO,24.863169
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,19.54667
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,pH,1.402948
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,1.132796
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Độ đục,0.538636
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,0.703682
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Bão hòa,20.800077
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Ánh sáng,1.45846
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,"Quang hợp, hô hấp",3.019881
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Chu kỳ ngày của DO,10.963004
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Thay đổi ngắn hạn,5.172737
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Cacbonat,1.377355
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Tảo,0.594777
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Vận chuyển,0.40013
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Triều,2.571093
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Lịch,5.434218
+E2,3 giờ,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.020368
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,DO,21.370157
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Nhiệt độ,15.085224
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,pH,1.44621
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Độ dẫn,1.292699
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Độ đục,0.536776
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Chlorophyll,0.669771
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Bão hòa,17.369019
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Ánh sáng,1.061897
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,"Quang hợp, hô hấp",3.177768
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Chu kỳ ngày của DO,18.688503
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Thay đổi ngắn hạn,3.522312
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Cacbonat,1.309841
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Tảo,0.740493
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Vận chuyển,0.53859
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Triều,2.544584
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Lịch,10.625564
+E2,6 giờ,quanh đợt DO dưới 6 mg/L,32,Cờ điền,0.020598

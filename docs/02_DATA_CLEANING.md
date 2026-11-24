@@ -1,8 +1,6 @@
-# Quy trình làm sạch dữ liệu dataset CEMP MSD
+# Làm sạch dữ liệu
 
-Phiên bản ngày 2026-11-15. Trạng thái: quy trình đã chốt và đã cài đặt trong scripts/build_base_splits.py; kết quả nằm trong base_splits/.
-
-Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở README.md, mục 5) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình có hai bước, cả hai chỉ dùng quá khứ:
+Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở [01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 4) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình cài đặt trong scripts/build_base_splits.py, kết quả ghi vào dataset/base_splits/. Quy trình có hai bước, cả hai chỉ dùng quá khứ:
 1. loại giá trị ngoài miền vật lý (mục 3);
 2. điền mọi ô trống bằng số đo thật gần nhất phía trước và gắn cờ 1 (mục 4).
 
@@ -20,7 +18,7 @@ Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới �
 
 ## 2. Nguyên tắc
 
-1. Không sửa raw/. Dữ liệu sau làm sạch ghi vào base_splits/; mọi ô được điền đều có cờ (mục 5).
+1. Không sửa dataset/raw/. Dữ liệu sau làm sạch ghi vào dataset/base_splits/; mọi ô được điền đều có cờ (mục 5).
 2. Nhân quả: không dùng số đo phía sau khoảng trống. Nếu dùng, cửa sổ có thời điểm dự báo nằm trong khoảng trống sẽ gián tiếp thấy tương lai; và khi hệ thống web chạy thật, số đo phía sau chưa tồn tại. Nhờ vậy quy trình chạy y hệt khi huấn luyện, khi đánh giá và khi dùng thật.
 3. Một quy trình cho cả ba tập, chạy liền mạch qua ranh giới: đầu val được điền từ số đo cuối của train, đầu test từ số đo cuối của val.
 4. Sai số chỉ tính trên DO đo thật; giá trị điền chỉ dùng làm đầu vào (mục 5).
@@ -33,7 +31,7 @@ Giá trị nằm ngoài miền dưới đây được coi là lỗi (sai đơn v
 |---|---|---|---|---|---|---|
 | Miền chấp nhận | 0 đến 20 mg/L | 0 đến 35 độ C | 6 đến 10 | 20 đến 3000 uS/cm | 0 đến 1000 FNU | 0 đến 200 ug/L |
 
-Trong ba tập không có giá trị nào ngoài miền. Bước này vẫn được giữ để chặn số đo vô lý khi hệ thống web nhận dữ liệu mới.
+Trong ba tập không có giá trị nào ngoài miền (artifacts/dataset/cleaning_summary_train.csv). Bước này vẫn được giữ để chặn số đo vô lý khi hệ thống web nhận dữ liệu mới.
 
 ## 4. Điền khoảng trống
 
@@ -81,7 +79,14 @@ Giới hạn: trên khoảng trống dài, giá trị chép lại là đường 
 
 ## 5. Cờ đánh dấu
 
-base_splits/ gồm train.csv, val.csv, test.csv. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l. Cờ tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2025-01-25 10:30, chỉ độ dẫn trống 6.5 giờ).
+dataset/base_splits/ gồm train.csv, val.csv, test.csv. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l; dấu thập phân là dấu chấm. Cờ tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2025-01-25 10:30, chỉ độ dẫn trống 6.5 giờ). Ba dòng của train.csv, dòng giữa có cả sáu biến trống trong nguồn và được điền bằng số đo của dòng đầu:
+
+```
+datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag_do_mg_l,flag_water_temp_c,flag_ph,flag_spc_us_cm,flag_turbidity_fnu,flag_chl_fluor_ug_l
+2019-02-05 12:00:00,9.48,11.24,7.56,399,71.91,7.13,0,0,0,0,0,0
+2019-02-05 12:15:00,9.48,11.24,7.56,399,71.91,7.13,1,1,1,1,1,1
+2019-02-05 12:30:00,9.49,11.27,7.56,395,70.33,7.16,0,0,0,0,0,0
+```
 
 | Cờ | Nghĩa | Giá trị trong file |
 |---|---|---|
@@ -99,7 +104,7 @@ Sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ 
 
 ## 6. Điểm DO đột biến một mốc
 
-Điểm DO đột biến một mốc là mốc mà DO lệch quá 0.8 mg/L so với mốc trước rồi quay lại quá 0.8 mg/L ở mốc sau. Bước nhảy như vậy hiếm: 99% bước thay đổi 15 phút của DO trong train không quá 0.40 mg/L.
+Điểm DO đột biến một mốc là mốc mà DO lệch quá 0.8 mg/L so với mốc trước rồi quay lại quá 0.8 mg/L ở mốc sau. Bước nhảy như vậy hiếm: 99% bước thay đổi 15 phút của DO trong train không quá 0.40 mg/L (artifacts/dataset/cleaning_summary_train.csv).
 
 ![Điểm DO đột biến](../artifacts/dataset/fig_dot_bien.png)
 
@@ -108,15 +113,3 @@ Sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ 
 - Ảnh hưởng đến DO thấp của test: 8 trên 9 mốc DO dưới 5 mg/L và 17 trên 34 mốc dưới 6 mg/L là điểm đột biến, như mốc 3.73 mg/L ở hình.
 
 Cả 212 điểm được giữ là số đo thật (cờ 0): muốn nhận ra một điểm đột biến phải có số đo ở mốc sau, nên phép phát hiện không nhân quả và không dùng được cho số đo mới nhất khi chạy thật. Danh sách và phân loại: artifacts/dataset/do_reversal_points.csv, reversal_effect.csv.
-
-## 7. Tái lập
-
-Môi trường Python khai báo trong pyproject.toml ở gốc repo. Cài một lần bằng `uv sync`, rồi chạy từ gốc repo:
-
-```
-uv run python scripts/build_base_splits.py   # tạo dataset/base_splits/ từ dataset/raw/
-uv run python scripts/cleaning_study.py      # mục 3, 6: miền giá trị, bước thay đổi 15 phút, điểm DO đột biến
-uv run python scripts/gap_study.py           # mục 4.1: histogram khoảng trống, danh sách khoảng trống dài
-uv run python scripts/figures.py             # các hình (cần thêm describe_dataset.py, xem README.md mục 6)
-uv run python scripts/verify_dataset.py      # kiểm chứng, gồm cả các số liệu ở mục 4.3
-```

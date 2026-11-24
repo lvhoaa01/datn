@@ -1,6 +1,6 @@
 """Tạo dataset/base_splits/: ba tập train, val, test đã làm sạch, kèm cột cờ cho từng biến.
 
-Quy trình (dataset/LAM_SACH.md), nhân quả: mỗi ô chỉ phụ thuộc số đo tại chính nó và trước nó.
+Quy trình (docs/02_DATA_CLEANING.md), nhân quả: mỗi ô chỉ phụ thuộc số đo tại chính nó và trước nó.
   1. Giá trị ngoài miền vật lý RANGES bị loại, coi như ô trống.
   2. Mọi ô trống được điền bằng số đo hợp lệ gần nhất phía trước (ffill), không giới hạn độ dài khoảng trống; chuỗi
      chạy liền mạch qua ranh giới train, val, test vì tập sau được dùng quá khứ của tập trước. Nếu ô trống nằm ngay
