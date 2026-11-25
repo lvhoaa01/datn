@@ -12,7 +12,7 @@ Ghi vào artifacts/analysis/:
   attr_by_column.csv, attr_by_group.csv: mức ảnh hưởng = TB trên cửa sổ của |phần góp ròng| (cộng trên 96 mốc,
     cộng trên các cột của nhóm), kèm độ lệch chuẩn giữa seed và tỉ trọng (%), cho bước 15 phút, 3 giờ, 6 giờ.
   attr_by_lag.csv: tỉ trọng ảnh hưởng của từng giờ trong 24 giờ trước lúc dự báo, theo nhóm.
-  attr_by_condition.csv: tỉ trọng nhóm theo trạng thái lúc dự báo: nhiệt độ nước, bão hòa từ 130% (tảo nở hoa),
+  attr_by_condition.csv: tỉ trọng nhóm theo trạng thái lúc dự báo: nhiệt độ nước, bão hòa từ 130%,
     ban đêm, ban ngày, và các cửa sổ quanh đợt DO dưới 6 mg/L.
   attr_pairs.csv: hai nhóm mang thông tin trùng nhau (DO và Bão hòa, Nhiệt độ và Bão hòa): tương quan giữa phần góp
     ròng của hai nhóm qua các cửa sổ, mức ảnh hưởng của từng nhóm và của tổng hai nhóm.
@@ -220,7 +220,7 @@ def write_tables(res, cond, near_low, ex_i, t_explain, n_in):
         # theo điều kiện
         tb = pd.cut(cond.water_temp_c, TEMP_BINS[0], right=False, labels=TEMP_BINS[1]).astype(str).to_numpy()
         sel = ([("toàn bộ test", np.ones(len(tb), bool))] + [(f"nước {b}", tb == b) for b in TEMP_BINS[1]]
-               + [("bão hòa từ 130% (tảo nở hoa)", cond.do_sat_pct.to_numpy() >= 130),
+               + [("bão hòa từ 130%", cond.do_sat_pct.to_numpy() >= 130),
                   ("ban đêm", cond.night.to_numpy()), ("ban ngày", ~cond.night.to_numpy()),
                   ("quanh đợt DO dưới 6 mg/L", near_low)])
         for name, m in sel:

@@ -129,7 +129,7 @@ def check_windows(splits):
 
 
 def saturation(t, spc):
-    """DO bão hòa (mg/L), Benson và Krause (1984), độ mặn PSS-78 từ độ dẫn; cùng công thức common.do_saturation."""
+    """DO bão hòa (mg/L), Benson và Krause (1984), độ mặn từ độ dẫn theo Schemel (2001); cùng công thức common.do_saturation."""
     T = t + 273.15
     R = max(spc, 0.0) / 53087.0
     sal = 0.0120 - 0.2174 * R**0.5 + 25.3283 * R + 13.7714 * R**1.5 - 6.4788 * R**2 + 2.5842 * R**2.5

@@ -59,7 +59,7 @@ Mỗi ô trống, kể cả ô bị loại ở mục 3, được điền bằng 
 
 Lý do chọn quy tắc này:
 - Khi DO trống thì gần như cả đầu đo ngừng ghi (mục 4.1). Chép lần đo trước đó là chép một lần đo thật của cả sáu biến, nên các biến vẫn khớp nhau như khi đo.
-- Không có tham số, nhân quả, hệ thống web làm y hệt.
+- Không có tham số, nhân quả, hệ thống web sẽ làm y hệt.
 - Ô được điền rất ít (dưới 0.4% số ô, mục 4.3), mô hình biết ô nào là ô điền qua cờ, và không bị tính sai số trên giá trị điền.
 - Dùng chung cho mọi thí nghiệm so sánh (dữ liệu gốc, thêm đặc trưng miền, thêm đặc trưng ngữ nghĩa), nên không làm lệch phép so sánh.
 
@@ -108,7 +108,7 @@ Sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ 
 
 ![Điểm DO đột biến](../artifacts/dataset/fig_dot_bien.png)
 
-- Có 212 điểm (train 63, val 28, test 121), gần như tất cả trong tháng 6 đến 9, lúc tảo nở hoa.
+- Có 212 điểm (train 63, val 28, test 121), gần như tất cả trong mùa nóng (tháng 6 đến 9).
 - Không xác định được điểm nào là lỗi: 136 điểm có nhiệt độ hoặc pH đổi cùng lúc, có thể là một khối nước khác đi qua cảm biến; nhưng một trục trặc làm cả đầu đo lệch theo cũng cho dấu hiệu như vậy.
 - Ảnh hưởng đến DO thấp của test: 8 trên 9 mốc DO dưới 5 mg/L và 17 trên 34 mốc dưới 6 mg/L là điểm đột biến, như mốc 3.73 mg/L ở hình.
 

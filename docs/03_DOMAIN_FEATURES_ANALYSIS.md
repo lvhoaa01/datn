@@ -7,7 +7,7 @@ Tài liệu mô tả 24 đặc trưng miền thêm vào đầu vào của mô h�
 | Khái niệm | Nghĩa |
 |---|---|
 | Đặc trưng miền | Đại lượng tính bằng công thức từ kiến thức về oxy trong sông (hóa lý, sinh thái, thiên văn), từ sáu biến đo và thời điểm đo |
-| E1, E2, E3 | Ba thí nghiệm dùng chung dữ liệu, chung mô hình và cách huấn luyện, chỉ khác cột đầu vào. E1: sáu biến đo và sáu cột cờ. E2: E1 cộng 24 đặc trưng miền. E3: E2 cộng đặc trưng ngữ nghĩa suy ra từ ontology |
+| E1, E2, E3 | Ba thí nghiệm dùng chung dữ liệu, chung mô hình và cách huấn luyện, chỉ khác cột đầu vào. E1: sáu biến đo và sáu cột cờ. E2: E1 cộng 24 đặc trưng miền. E3: E1 cộng đặc trưng ngữ nghĩa suy ra từ ontology (không gồm 24 đặc trưng miền) |
 | Nhân quả | Giá trị tại một mốc chỉ dùng số đo tại mốc đó và các mốc trước, nên hệ thống web tính được y hệt khi chạy thật |
 | Trượt 24 giờ | Tính trên 96 mốc gần nhất, kết thúc ở mốc hiện tại |
 | DO bão hòa | Lượng oxy tối đa nước giữ được khi cân bằng với không khí; giảm khi nước nóng lên hoặc mặn hơn |
@@ -20,7 +20,7 @@ Ranh giới với E3: đặc trưng E2 là đại lượng liên tục tính b�
 
 ## 2. Cơ sở: cân bằng oxy trong sông
 
-DO ở trạm có hai chế độ ([01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 3.3). Mùa lạnh DO gần như phẳng, biên độ trong ngày khoảng 0.5 mg/L. Tháng 7 và 8 nước trên 24 độ C, tảo nở hoa, DO lên xuống gần 3 mg/L mỗi ngày và có lúc vượt xa mức bão hòa. Biến động này do ba quá trình chi phối, viết thành phương trình cân bằng oxy của Odum (1956):
+DO ở trạm có hai chế độ ([01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 3.3). Mùa lạnh DO gần như phẳng, biên độ trong ngày khoảng 0.5 mg/L. Tháng 7 và 8 nhiệt độ nước trung bình trên 24 độ C, tảo phát triển mạnh, DO lên xuống gần 3 mg/L mỗi ngày và có lúc vượt xa mức bão hòa. Biến động này do ba quá trình chi phối, viết thành phương trình cân bằng oxy của Odum (1956):
 
 ```
 DO thay đổi mỗi giờ = GPP - ER + k x D
@@ -78,7 +78,7 @@ k chỉ đi vào hai đặc trưng er_now và gpp_now. Tính lại hai đặc tr
 
 gpp_now gần như không phụ thuộc k, vì k xuất hiện hai lần với dấu ngược nhau trong công thức (mục 4.3) và gần như triệt tiêu. er_now nhạy hơn nhưng vẫn giữ tương quan 0.998 trong khoảng tin cậy. Nguồn: artifacts/dataset/reaeration_k_by_period.csv, reaeration_k_sensitivity.csv.
 
-Hô hấp không được quy đổi theo nhiệt độ: er_now là hô hấp của đêm gần nhất, và nhiệt độ hiện tại chỉ lệch nhiệt độ trung bình của đêm đó trung vị 0.30 độ C (95% số mốc lệch không quá 1.04 độ C), nên phép quy đổi gần như không làm thay đổi giá trị (artifacts/dataset/er_temp_offset.csv).
+Hô hấp không được quy đổi theo nhiệt độ: er_now là hô hấp của đêm gần nhất, và nhiệt độ hiện tại chỉ lệch nhiệt độ trung bình của đêm đó trung vị 0.29 độ C (95% số mốc lệch không quá 1.04 độ C), nên phép quy đổi gần như không làm thay đổi giá trị (artifacts/dataset/er_temp_offset.csv).
 
 ## 4. Danh sách 24 đặc trưng
 
@@ -89,10 +89,10 @@ Ký hiệu: DO, T (nhiệt độ nước, độ C), pH, SpC (độ dẫn, uS/cm)
 | Cột | Công thức | Ý nghĩa |
 |---|---|---|
 | do_sat_mgl | DO bão hòa theo Benson và Krause (1984) | Nước nóng giữ ít oxy hơn: khoảng 11 mg/L ở 10 độ C, dưới 8 mg/L ở 28 độ C |
-| do_sat_pct | 100 x DO / do_sat_mgl | Trên 100% là thừa oxy; trên 150% là dấu hiệu tảo nở hoa |
+| do_sat_pct | 100 x DO / do_sat_mgl | Trên 100% là thừa oxy, thường do tảo quang hợp |
 | do_deficit | do_sat_mgl - DO | Chiều và lực của trao đổi khí với không khí |
 
-Công thức bão hòa (mg/L), với TK = T + 273.15 và độ mặn S tính gần đúng từ độ dẫn theo thang PSS-78 ở 25 độ C:
+Công thức bão hòa (mg/L), với TK = T + 273.15 và độ mặn S tính từ độ dẫn (đã quy về 25 độ C) theo công thức rút gọn của Schemel (2001):
 
 ```
 R = SpC / 53087
@@ -101,7 +101,7 @@ ln(DO bão hòa) = -139.34411 + 1.575701e5/TK - 6.642308e7/TK^2 + 1.243800e10/TK
                  - S x (0.017674 - 10.754/TK + 2140.7/TK^2)
 ```
 
-Áp suất lấy 1 atm vì trạm không đo áp suất khí quyển; trạm nằm gần mực nước biển. USGS dùng công thức Benson và Krause làm chuẩn từ năm 2011 (USGS Office of Water Quality Technical Memorandum 2011.03).
+Áp suất lấy 1 atm vì trạm không đo áp suất khí quyển; trạm nằm gần mực nước biển. USGS dùng công thức Benson và Krause làm chuẩn từ năm 2011 (USGS Office of Water Quality Technical Memorandum 2011.03). Bản ghi nhớ này đổi độ dẫn sang độ mặn bằng một công thức khác (phương trình 4); nước ở trạm gần như ngọt (độ mặn tối đa 0.61), nên dùng công thức đó thay cho Schemel làm DO bão hòa đổi tối đa 0.005 mg/L (artifacts/dataset/salinity_check.csv).
 
 ### 4.2. Ánh sáng: light
 
@@ -159,7 +159,7 @@ Với ngày = (giờ + phút / 60) / 24 và năm = (thứ tự ngày trong năm 
 | Cột | Công thức | Ý nghĩa |
 |---|---|---|
 | hour_sin, hour_cos | sin, cos của 2 pi x ngày | Giờ trong ngày, chu kỳ 24 giờ; sin và cos để 23:45 nằm sát 00:00 |
-| hour2_sin, hour2_cos | sin, cos của 4 pi x ngày | Họa tần 12 giờ: đường DO trong ngày không đối xứng (lên nhanh buổi chiều, xuống chậm cả đêm) |
+| hour2_sin, hour2_cos | sin, cos của 4 pi x ngày | Họa tần 12 giờ: đường DO trong ngày không đối xứng (tăng từ khoảng 07:15 đến 16:30, giảm trong phần còn lại của ngày; [01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 3.3) |
 | doy_sin, doy_cos | sin, cos của 2 pi x năm | Vị trí trong năm |
 
 ## 5. Ví dụ tính trên một dòng thật
@@ -180,7 +180,7 @@ Mốc 2021-07-15 15:00 (train, chiều mùa nóng): DO 9.49 mg/L, nhiệt độ 
 
 ## 6. Dữ liệu E2
 
-- File: dataset/base_domain_splits/{train,val,test}.csv, mỗi dòng là dòng tương ứng của base_splits (chép nguyên văn) nối thêm 24 cột theo thứ tự mục 4, ghi 6 chữ số thập phân. Tạo bằng scripts/build_domain_splits.py; k ghi trong artifacts/dataset/reaeration_k.csv và được dùng lại nguyên giá trị đó (hệ thống web cũng đọc từ file này).
+- File: dataset/base_domain_splits/{train,val,test}.csv, mỗi dòng là dòng tương ứng của base_splits (chép nguyên văn) nối thêm 24 cột theo thứ tự mục 4, ghi 6 chữ số thập phân. Tạo bằng scripts/build_domain_splits.py; k ghi trong artifacts/dataset/reaeration_k.csv và được dùng lại nguyên giá trị đó (hệ thống web sẽ đọc từ file này).
 - Đặc trưng tính trên chuỗi nối ba tập, liên tục qua ranh giới tập, như khi hệ thống chạy liên tục.
 - Đầu vào mô hình E2 có 36 cột: sáu biến và 24 đặc trưng (chuẩn hóa), rồi sáu cột cờ. Đặc trưng không có cột cờ riêng: trong khoảng trống chúng được tính từ giá trị đã điền, và cờ của sáu biến cho mô hình biết điều đó.
 - scripts/verify_dataset.py tính lại k và cả 24 đặc trưng độc lập, chỉ bằng thư viện chuẩn Python, và so từng ô với file (lệch tối đa cho phép 2e-6, do làm tròn 6 chữ số).
@@ -200,3 +200,4 @@ Mốc 2021-07-15 15:00 (train, chiều mùa nóng): DO 9.49 mg/L, nhiệt độ 
 4. Hornberger, G. M., and Kelly, M. G. (1975). Atmospheric reaeration in a river using productivity analysis. Journal of the Environmental Engineering Division, 101(5), 729-739.
 5. Spencer, J. W. (1971). Fourier series representation of the position of the sun. Search, 2(5), 172.
 6. U.S. Geological Survey. streamMetabolizer (gói R ước lượng trao đổi chất dòng sông), hàm calc_light. https://doi-usgs.github.io/streamMetabolizer/reference/calc_light.html
+7. Schemel, L. E. (2001). Simplified conversions between specific conductance and salinity units for use with data from monitoring stations. Interagency Ecological Program Newsletter, 14(1), 17-18. https://pubs.usgs.gov/publication/70174311

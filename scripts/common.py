@@ -107,15 +107,21 @@ def load_base_all(folder=BASE):
     return pd.concat([load_base_split(n, folder).assign(split=n) for n in NAMES], ignore_index=True)
 
 
-def do_saturation(temp_c, spc_us_cm):
+def salinity(spc_us_cm):
+    """Độ mặn từ độ dẫn quy về 25 độ C (uS/cm), theo công thức rút gọn của Schemel (2001), R = SpC / 53087."""
+    import numpy as np
+    R = np.clip(spc_us_cm, 0, None) / 53087.0
+    return 0.0120 - 0.2174 * R**0.5 + 25.3283 * R + 13.7714 * R**1.5 - 6.4788 * R**2 + 2.5842 * R**2.5
+
+
+def do_saturation(temp_c, spc_us_cm, sal=None):
     """DO bão hòa (mg/L) theo nhiệt độ (độ C) và độ dẫn (uS/cm), áp suất 1 atm.
 
-    Công thức Benson và Krause (1984) theo APHA; độ mặn PSS-78 tính gần đúng từ độ dẫn ở 25 độ C.
+    Công thức Benson và Krause (1984) theo APHA; độ mặn theo salinity (Schemel 2001), hoặc truyền sẵn qua sal.
     """
     import numpy as np
     T = temp_c + 273.15
-    R = np.clip(spc_us_cm, 0, None) / 53087.0
-    sal = 0.0120 - 0.2174 * R**0.5 + 25.3283 * R + 13.7714 * R**1.5 - 6.4788 * R**2 + 2.5842 * R**2.5
+    sal = salinity(spc_us_cm) if sal is None else sal
     lnc = (-139.34411 + 1.575701e5 / T - 6.642308e7 / T**2 + 1.243800e10 / T**3 - 8.621949e11 / T**4
            - sal * (1.7674e-2 - 10.754 / T + 2140.7 / T**2))
     return np.exp(lnc)

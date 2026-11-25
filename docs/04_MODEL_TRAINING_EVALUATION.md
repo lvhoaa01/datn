@@ -47,7 +47,7 @@ Các cửa sổ bị bỏ đều thuộc train, có nhãn nằm gọn trong mộ
 |---|---|---|
 | E1 | 6 biến đo và 6 cột cờ: 12 cột | dataset/base_splits/ |
 | E2 | E1 cộng 24 đặc trưng miền ([03_DOMAIN_FEATURES_ANALYSIS.md](03_DOMAIN_FEATURES_ANALYSIS.md)): 36 cột | dataset/base_domain_splits/ |
-| E3 | E2 cộng đặc trưng ngữ nghĩa suy ra từ ontology | dataset/base_semantic_splits/ (đang xây dựng) |
+| E3 | E1 cộng đặc trưng ngữ nghĩa suy ra từ ontology (không gồm 24 đặc trưng miền) | dataset/base_semantic_splits/ (đang xây dựng) |
 
 Mỗi cột số được chuẩn hóa: trừ trung bình, chia độ lệch chuẩn, cả hai tính trên dữ liệu huấn luyện (train; train cộng val khi huấn luyện lại, mục 6.4). Cột cờ giữ nguyên 0 và 1, để mô hình phân biệt giá trị điền với số đo thật.
 
@@ -117,7 +117,7 @@ Cột epoch 6 (E1) và epoch 3 (E2) gần với số epoch dùng khi huấn luy�
 
 ![E2 trừ E1 theo bước và epoch](../artifacts/analysis/fig_huan_luyen_theo_buoc.png)
 
-Hình trên so hai mô hình ở cùng epoch: E2 tốt hơn E1 ở các bước xa trong suốt quá trình huấn luyện; ở các bước dưới 1 giờ, hai mô hình gần ngang nhau trong vài epoch đầu, rồi E2 kém hơn khi E1 tiếp tục học bám sát DO hiện tại. Số liệu: artifacts/analysis/training_curves.csv (scripts/training_curves.py).
+Hình trên so hai mô hình ở cùng epoch: E2 tốt hơn E1 ở các bước xa trong suốt quá trình huấn luyện; ở các bước dưới 1 giờ, hai mô hình gần ngang nhau trong vài epoch đầu, rồi E2 kém hơn. Số liệu: artifacts/analysis/training_curves.csv (scripts/training_curves.py).
 
 ### 6.4. Huấn luyện lại trên train cộng val
 
@@ -136,12 +136,13 @@ Mô hình huấn luyện lại dự báo mọi cửa sổ test; MAE, RMSE, R2 t�
 
 ## 7. Kết quả trên test
 
-Số liệu là trung bình 3 seed (trong ngoặc: độ lệch chuẩn giữa seed). Nguồn: artifacts/runs/lstm_24h_6h/final/test.csv, test_tb.csv; các bảng và hình còn lại trong artifacts/analysis/ (scripts/error_analysis.py).
+Số liệu là trung bình 3 seed (trong ngoặc: độ lệch chuẩn giữa seed). Nguồn: artifacts/runs/lstm_24h_6h/final/test.csv, test_tb.csv; baseline giữ nguyên DO (mục 7.2): artifacts/analysis/error_baseline.csv, error_by_step.csv; các bảng và hình còn lại trong artifacts/analysis/ (scripts/error_analysis.py).
 
 ### 7.1. Tổng quát
 
 | Thí nghiệm | MAE (mg/L) | RMSE (mg/L) | R2 | MAE bước 15 phút | MAE bước 6 giờ |
 |---|---|---|---|---|---|
+| Baseline giữ nguyên DO | 0.4511 | 0.7487 | 0.7453 | 0.1139 | 0.7275 |
 | E1 | 0.2743 (0.0080) | 0.4988 (0.0189) | 0.8868 (0.0085) | 0.1270 | 0.3519 |
 | E2 | 0.2381 (0.0066) | 0.4150 (0.0104) | 0.9217 (0.0040) | 0.1454 | 0.2912 |
 | E3 | chưa có | | | | |
@@ -152,16 +153,16 @@ So với E1, E2 giảm MAE 13.2% và RMSE 16.8%; RMSE giảm nhiều hơn MAE ng
 
 ![MAE theo bước dự báo](../artifacts/analysis/fig_test_theo_buoc.png)
 
-Đường đứt là mốc tham chiếu "giữ nguyên DO hiện tại": dự báo mọi bước bằng DO đo mới nhất. Mốc này không phải mô hình, chỉ cho biết một bước khó đến đâu: ở 15 phút DO gần như chưa kịp đổi, ở 6 giờ DO đã đi gần nửa chu kỳ ngày đêm.
+Đường đứt là baseline đơn giản "giữ nguyên DO hiện tại": dự báo mọi bước bằng DO đo mới nhất, không học gì từ dữ liệu, nên không có độ lệch giữa seed. Baseline cho biết một bước khó đến đâu: ở 15 phút DO gần như chưa kịp đổi, ở 6 giờ DO đã đi gần nửa chu kỳ ngày đêm. Mô hình chỉ có giá trị ở những bước nó tốt hơn baseline.
 
 | Bước | 15 phút | 30 phút | 1 giờ | 3 giờ | 6 giờ |
 |---|---|---|---|---|---|
-| Giữ nguyên DO | 0.114 | 0.151 | 0.221 | 0.452 | 0.727 |
+| Baseline giữ nguyên DO | 0.114 | 0.151 | 0.221 | 0.452 | 0.727 |
 | E1 | 0.127 | 0.149 | 0.193 | 0.288 | 0.352 |
 | E2 | 0.145 | 0.158 | 0.184 | 0.248 | 0.291 |
 
-- Ở bước 15 phút, cả hai mô hình kém mốc giữ nguyên DO; từ 30 phút (E1) và 45 phút (E2) trở đi mô hình mới tốt hơn mốc này, và ở bước 6 giờ sai số chỉ còn khoảng một nửa (E1) và hai phần năm (E2) của mốc. Giá trị của mô hình nằm ở dự báo từ 1 giờ trở lên, đúng khoảng cần cho cảnh báo sớm.
-- E2 đánh đổi một phần độ chính xác ở bước rất gần lấy độ chính xác ở bước xa: kém E1 ở hai bước đầu (15 phút: 0.145 so với 0.127; 30 phút: 0.158 so với 0.149), ngang ở 45 phút, tốt hơn từ 1 giờ và giảm 17.3% ở bước 6 giờ. Phần thua (dưới 0.02 mg/L) nằm ở các bước mà cả hai mô hình đều chưa hơn mốc giữ nguyên DO; phần thắng nằm ở khoảng 1 đến 6 giờ, khoảng cần cho cảnh báo sớm. Tính trên cả 24 bước, E2 vẫn có MAE thấp hơn E1 13.2% (mục 7.1).
+- Ở bước 15 phút, cả hai mô hình kém baseline; từ 30 phút (E1) và 45 phút (E2) trở đi mô hình mới tốt hơn baseline, và ở bước 6 giờ sai số chỉ còn khoảng một nửa (E1) và hai phần năm (E2) của baseline. Giá trị của mô hình nằm ở dự báo từ 1 giờ trở lên, đúng khoảng cần cho cảnh báo sớm.
+- E2 đánh đổi một phần độ chính xác ở bước rất gần lấy độ chính xác ở bước xa: kém E1 ở hai bước đầu (15 phút: 0.145 so với 0.127; 30 phút: 0.158 so với 0.149), ngang ở 45 phút, tốt hơn từ 1 giờ và giảm 17.3% ở bước 6 giờ. Phần thua (dưới 0.02 mg/L) nằm ở các bước mà cả hai mô hình kém hoặc chỉ ngang baseline; phần thắng nằm ở khoảng 1 đến 6 giờ, khoảng cần cho cảnh báo sớm. Tính trên cả 24 bước, E2 vẫn có MAE thấp hơn E1 13.2% (mục 7.1).
 
 Nguồn: artifacts/analysis/error_by_step.csv.
 
@@ -196,9 +197,9 @@ Phân rã sai số trả lời câu hỏi mô hình yếu ở đâu. Mỗi đi�
 | | 12 đến 18 giờ | 25.0% | 29.2% | 0.321 | 0.255 | -20.3% |
 | | 18 đến 24 giờ | 24.9% | 22.4% | 0.247 | 0.214 | -13.2% |
 
-- Điểm yếu chính của E1 là nước ấm và nước quá bão hòa: nước từ 24 độ C chiếm 29% số điểm nhưng 62% tổng sai số; bão hòa từ 130% (tảo nở hoa) chiếm 12% số điểm nhưng 32% tổng sai số.
+- Điểm yếu chính của E1 là nước ấm và nước quá bão hòa: nước từ 24 độ C chiếm 29% số điểm nhưng 62% tổng sai số; bão hòa từ 130% chiếm 12% số điểm nhưng 32% tổng sai số.
 - E2 giảm sai số ở mọi nhóm nhiệt độ và bão hòa, nhiều nhất ở đúng các nhóm E1 yếu (từ 24 độ C: 15.4%; bão hòa từ 130%: 21.8%) và khi dự báo vào buổi chiều (12 đến 18 giờ: 20.3%), lúc DO đạt đỉnh và sắp giảm.
-- Tỉ lệ sai số của các nhóm gần như không đổi giữa E1 và E2 (nước từ 24 độ C vẫn chiếm 61% sai số của E2): đặc trưng miền làm giảm sai số ở mọi nơi nhưng không xóa điểm yếu ở mùa tảo nở hoa.
+- Tỉ lệ sai số của các nhóm gần như không đổi giữa E1 và E2 (nước từ 24 độ C vẫn chiếm 61% sai số của E2): đặc trưng miền làm giảm sai số ở mọi nơi nhưng không xóa điểm yếu ở mùa nóng.
 
 Nguồn: artifacts/analysis/error_by_condition.csv.
 
@@ -208,7 +209,7 @@ Nguồn: artifacts/analysis/error_by_condition.csv.
 
 | Đối tượng | Số điểm | MAE E1 | MAE E2 |
 |---|---|---|---|
-| Mọi điểm có DO đo dưới 6 mg/L | 816 | 2.018 | 1.895 |
+| Mọi điểm có DO đo dưới 6 mg/L (34 mốc, mỗi mốc ở 24 bước dự báo) | 816 | 2.018 | 1.895 |
 | Cửa sổ quanh đợt 2025-08-13 06:15 (2.25 giờ, thấp nhất 4.71) | 792 | 0.583 | 0.623 |
 | Cửa sổ quanh đợt 2025-08-14 10:30 (1 giờ, thấp nhất 3.73) | 672 | 0.745 | 0.747 |
 | Cửa sổ quanh đợt 2025-08-26 09:15 (1.25 giờ, thấp nhất 5.11) | 696 | 0.661 | 0.657 |
@@ -230,7 +231,7 @@ Cửa sổ quanh một đợt là cửa sổ có thời điểm dự báo trong 
 | MAE E1 | 0.066 | 0.083 | 0.126 | 0.297 | 0.783 | 0.612 | 0.313 | 0.096 | 0.083 |
 | MAE E2 | 0.063 | 0.077 | 0.126 | 0.261 | 0.603 | 0.546 | 0.290 | 0.093 | 0.076 |
 
-- Sai số theo tháng đi cùng biên độ ngày đêm của DO: tháng 7 biên độ 5.13 mg/L thì MAE E1 0.78, tháng 11 biên độ 0.56 thì MAE 0.08. Các tháng lạnh gần như không có gì để dự báo sai; gần như toàn bộ sai số nằm ở mùa tảo nở hoa (tháng 6 đến 9; [01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 3.5).
+- Sai số theo tháng đi cùng biên độ ngày đêm của DO: tháng 7 biên độ 5.13 mg/L thì MAE E1 0.78, tháng 11 biên độ 0.56 thì MAE 0.08. Các tháng lạnh gần như không có gì để dự báo sai; khoảng 80% sai số nằm ở mùa nóng (tháng 6 đến 9, mục 7.3), mùa tảo phát triển mạnh ([01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 3.5).
 - Test khó hơn val vì năm 2025 có mùa nở hoa mạnh kéo dài (chênh lệch trong ngày trung vị 1.54 mg/L, so với 1.06 của val), nên MAE trên test cao hơn trên val ở cả hai thí nghiệm (E1: 0.2743 so với 0.2336).
 - E2 giảm sai số nhiều nhất ở đúng các tháng biên độ lớn (tháng 7: 23%); ở tháng 5 và các tháng lạnh, nơi E1 vốn đã sai ít, MAE đổi dưới 0.01 mg/L.
 - Ở các điểm DO thấp nhất, sai số lớn vì đó là những cú tụt ngắn mà mô hình dự báo đường trơn không theo kịp (mục 7.5).
@@ -309,11 +310,11 @@ Phần góp giải thích gần trọn hiệu dự báo; chênh lệch lớn nh�
 
 Nguồn: artifacts/analysis/attr_by_lag.csv.
 
-**Theo trạng thái của sông.** Mỗi cửa sổ được xếp theo trạng thái lúc dự báo: nhiệt độ nước, đang nở hoa (bão hòa từ 130%), ban đêm hay ban ngày, và quanh các đợt DO dưới 6 mg/L (thời điểm dự báo trong đợt hoặc trong 6 giờ trước đợt). Trong mỗi trạng thái, tỉ trọng ảnh hưởng của các nhóm được tính lại; ô đậm là nhóm được dùng nhiều.
+**Theo trạng thái của sông.** Mỗi cửa sổ được xếp theo trạng thái lúc dự báo: nhiệt độ nước, quá bão hòa mạnh (bão hòa từ 130%), ban đêm hay ban ngày, và quanh các đợt DO dưới 6 mg/L (thời điểm dự báo trong đợt hoặc trong 6 giờ trước đợt). Trong mỗi trạng thái, tỉ trọng ảnh hưởng của các nhóm được tính lại; ô đậm là nhóm được dùng nhiều.
 
 ![Tỉ trọng ảnh hưởng theo trạng thái](../artifacts/analysis/fig_anh_huong_theo_dieu_kien.png)
 
-| Bước 6 giờ | Nước dưới 18 độ C | Nước từ 24 độ C | Nở hoa (bão hòa từ 130%) | Ban đêm | Ban ngày | Quanh đợt DO thấp |
+| Bước 6 giờ | Nước dưới 18 độ C | Nước từ 24 độ C | Bão hòa từ 130% | Ban đêm | Ban ngày | Quanh đợt DO thấp |
 |---|---|---|---|---|---|---|
 | E1: DO | 70% | 53% | 59% | 62% | 57% | 63% |
 | E1: nhiệt độ | 8% | 16% | 11% | 13% | 13% | 19% |
@@ -323,11 +324,11 @@ Nguồn: artifacts/analysis/attr_by_lag.csv.
 | E2: nhiệt độ | 10% | 15% | 10% | 15% | 11% | 15% |
 | E2: quang hợp, hô hấp | 6% | 6% | 6% | 5% | 7% | 3% |
 
-Số cửa sổ: dưới 18 độ C 2128, từ 24 độ C 1886, nở hoa 789, ban đêm 3108, ban ngày 3487, quanh đợt DO thấp 32.
+Số cửa sổ: dưới 18 độ C 2128, từ 24 độ C 1886, bão hòa từ 130% 789, ban đêm 3108, ban ngày 3487, quanh đợt DO thấp 32.
 
 - Nước lạnh: cả hai mô hình dựa nhiều nhất vào DO hiện tại (E1 70%; E2 44% qua nhóm DO và bão hòa), vì DO gần như phẳng.
 - Nước ấm: E1 chuyển sang nhiệt độ và chlorophyll (16% và 14%), tức dùng biến đo gián tiếp để đoán hoạt động của tảo. E2 dùng nhóm chu kỳ ngày của DO nhiều gấp đôi so với khi nước lạnh (18% so với 9%): biên độ và vị trí của DO trong chu kỳ ngày đêm đo thẳng điều E1 phải đoán. Đây cũng là trạng thái E2 giảm sai số nhiều nhất (mục 7.4).
-- Đang nở hoa: E1 dựa nhiều nhất vào chlorophyll (16%); E2 dựa vào bão hòa và DO (41%) và chu kỳ ngày (16%), chlorophyll chỉ 6%.
+- Bão hòa từ 130%: E1 dùng chlorophyll nhiều nhất trong các trạng thái (16%); E2 dựa vào bão hòa và DO (41%) và chu kỳ ngày (16%), chlorophyll chỉ 6%.
 - Ban ngày, E2 dùng chu kỳ ngày và quang hợp nhiều hơn ban đêm; ban đêm dùng nhiệt độ nhiều hơn (15% so với 11%).
 - Quanh đợt DO thấp, cả hai dùng nhiệt độ nhiều hơn bình thường (E1 19%, E2 15%). Chỉ có 32 cửa sổ tròn giờ nên các số ở cột này kém chắc chắn.
 
@@ -364,7 +365,7 @@ Mục này gom kết quả sai số (mục 7) và ảnh hưởng của đầu v�
 | | E1, dữ liệu gốc | E2, thêm đặc trưng miền |
 |---|---|---|
 | Mạnh | Tốt hơn E2 ở bước 15 và 30 phút; ít đầu vào, không phụ thuộc công thức hay hằng số ước lượng | MAE thấp hơn 13.2%, RMSE thấp hơn 16.8% (bớt các lần sai lớn); bước 6 giờ thấp hơn 17.3%; ổn định hơn giữa các seed (độ lệch chuẩn R2 0.004 so với 0.0085) |
-| Yếu | Mùa tảo nở hoa: nước từ 24 độ C chiếm 29% số điểm nhưng 62% tổng sai số; bão hòa từ 130% MAE 0.73 mg/L | Kém E1 ở 15 phút (14.5%) và 30 phút (5.9%); quá khớp sớm (tốt nhất trên val sau 2 đến 4 epoch); hệ thống web phải tính thêm 24 đặc trưng và cần k |
+| Yếu | Mùa nóng: nước từ 24 độ C chiếm 29% số điểm nhưng 62% tổng sai số; bão hòa từ 130% MAE 0.73 mg/L | Kém E1 ở 15 phút (14.5%) và 30 phút (5.9%); quá khớp sớm (tốt nhất trên val sau 2 đến 4 epoch); hệ thống web phải tính thêm 24 đặc trưng và cần k |
 | Cách dùng đầu vào | DO đo chiếm 59 đến 86% ảnh hưởng; dự báo xa bằng cách nhìn lại DO cùng giờ hôm qua; khi nước ấm chuyển sang nhiệt độ và chlorophyll | Đặc trưng miền chiếm 54 đến 63% ảnh hưởng, nhiều nhất là bão hòa và chu kỳ ngày của DO; các nhóm tảo, ánh sáng, cacbonat, vận chuyển, triều mỗi nhóm không quá 3.3%; dựa gần như chỉ vào 3 giờ gần nhất |
 | Quanh đợt DO thấp | Dự báo cao hơn thật khoảng 2 mg/L ở các điểm dưới 6 mg/L | Như E1 (thấp hơn E1 6.1% ở các điểm này); tốt hơn rõ ở một đợt, kém hơn ở một đợt |
 

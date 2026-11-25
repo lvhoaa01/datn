@@ -4,8 +4,9 @@ dùng cho docs/04_MODEL_TRAINING_EVALUATION.md mục 7 và 9.
 Mỗi điểm sai số là một cặp (cửa sổ test, bước dự báo) có DO đo thật (cờ 0). Điều kiện của một cửa sổ là điều kiện
 ở mốc cuối của đầu vào (số đo mới nhất lúc dự báo). Mọi con số là trung bình trên ba seed.
 Ghi vào artifacts/analysis/:
-  error_by_step.csv: MAE theo bước dự báo, kèm mốc tham chiếu "giữ nguyên DO" (bo = giu_nguyen: dự báo mọi bước
-    bằng DO ở mốc cuối của đầu vào), để biết một bước dự báo khó đến đâu.
+  error_by_step.csv: MAE theo bước dự báo, kèm baseline đơn giản "giữ nguyên DO" (bo = giu_nguyen: dự báo mọi bước
+    bằng DO ở mốc cuối của đầu vào).
+  error_baseline.csv: MAE, RMSE, R2 của baseline giữ nguyên DO trên cùng các mốc nhãn DO cờ 0 như các mô hình.
   error_by_month.csv: theo tháng của thời điểm dự báo: chênh lệch DO trong ngày (trung vị), MAE từng bộ.
   error_by_season.csv, error_by_condition.csv: tỉ lệ điểm, MAE và tỉ lệ tổng sai số tuyệt đối theo giai đoạn mùa,
     nhiệt độ nước, phần trăm bão hòa oxy, giờ trong ngày; thay_doi_pct là MAE của bộ so với bộ base.
@@ -23,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common import REPO, do_saturation, load_base_all
+from common import REPO, do_saturation, load_base_all, metrics
 from describe_dataset import episode_spans, season
 from figures import AQUA, BLUE, INK, INK2, ORANGE, RED
 from train import final_dir, iter_runs
@@ -108,11 +109,11 @@ def err_stats(p, y, sel, tag):
 
 
 def fig_steps(steps):
-    """MAE theo bước dự báo của từng bộ đặc trưng và của mốc giữ nguyên DO."""
+    """MAE theo bước dự báo của từng bộ đặc trưng và của baseline giữ nguyên DO."""
     fig, ax = plt.subplots(figsize=(7, 3.6))
     for fs, g in steps.groupby("bo", sort=False):
         if fs == "giu_nguyen":
-            ax.plot(g.phut / 60, g.MAE, color=INK2, lw=1.5, ls="--", label="giữ nguyên DO hiện tại")
+            ax.plot(g.phut / 60, g.MAE, color=INK2, lw=1.5, ls="--", label="baseline: giữ nguyên DO hiện tại")
         else:
             ax.plot(g.phut / 60, g.MAE, color=SETS[fs][1], lw=2, label=SETS[fs][0])
     ax.set_xlabel("bước dự báo (giờ tới)")
@@ -229,6 +230,9 @@ def main():
                           MAE=np.abs(naive - y0[:, k])[m0[:, k]].mean(), MAE_sd=0.0))
     steps = pd.DataFrame(steps)
     steps.round(6).to_csv(os.path.join(OUT, "error_by_step.csv"), index=False)
+    naive_all = np.repeat(naive[:, None], y0.shape[1], axis=1)
+    pd.DataFrame([dict(bo="giu_nguyen", **metrics(naive_all, y0, m0))]).round(6).to_csv(
+        os.path.join(OUT, "error_baseline.csv"), index=False)
     # theo điều kiện
     cond = window_conditions(d, preds["base"][3])
     seas = group_table(preds, cond.season.to_numpy(), ["lanh", "xuan", "nong", "thu"], "mua")

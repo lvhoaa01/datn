@@ -6,6 +6,8 @@ Ghi vào artifacts/dataset/:
   reaeration_k_sensitivity.csv: tương quan của er_now, gpp_now tính với k khác so với bản dùng k đã ước lượng.
   er_temp_offset.csv: chênh lệch giữa nhiệt độ hiện tại và nhiệt độ TB các bước đêm trong 24 giờ qua.
   domain_example.csv: các đại lượng trung gian và 24 đặc trưng của một dòng train (ví dụ tính tay trong tài liệu).
+  salinity_check.csv: độ mặn lớn nhất và chênh lệch DO bão hòa (mg/L) khi thay công thức độ mặn Schemel (2001)
+    bằng phương trình 4 của USGS (2011), trên mọi dòng 2019 đến 2025.
   fig_k_ban_dem.png: các đêm train, trung bình theo nhóm thiếu hụt và đường hồi quy.
 Chạy từ gốc repo (sau build_domain_splits.py): uv run python scripts/domain_study.py
 """
@@ -16,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from common import (DAY, NIGHT_MIN_STEPS, STATS, do_saturation, domain_features, fit_reaeration, load_base_all,
-                    night_table, oxygen_steps, read_k, solar_elevation_sin)
+                    night_table, oxygen_steps, read_k, salinity, solar_elevation_sin)
 from describe_dataset import season
 
 matplotlib.use("Agg")
@@ -63,7 +65,7 @@ def main():
     T = d["water_temp_c"].to_numpy()
     Tn = S(np.where(night, T, 0)) / np.maximum(n_night, 1)
     off = np.abs(T - Tn)[n_night >= NIGHT_MIN_STEPS]
-    pd.DataFrame([dict(median=np.median(off), p95=np.percentile(off, 95), n=len(off))]).round(3).to_csv(
+    pd.DataFrame([dict(median=np.median(off), p95=np.percentile(off, 95), n=len(off))]).round(6).to_csv(
         os.path.join(STATS, "er_temp_offset.csv"), index=False)
     # 5. dòng ví dụ
     i = int(np.flatnonzero(d["datetime_pst"] == pd.Timestamp(EXAMPLE))[0])
@@ -76,7 +78,14 @@ def main():
               sum_light_x_0_25=np.clip(se[w], 0, None).sum() * 0.25, k=k)
     ex.update({c: base[c][i] for c in base.columns})
     pd.DataFrame([ex]).round(6).to_csv(os.path.join(STATS, "domain_example.csv"), index=False)
-    # 6. hình
+    # 6. độ mặn: công thức Schemel (2001) dùng trong đặc trưng so với phương trình 4 của USGS (2011)
+    spc = d["spc_us_cm"].to_numpy()
+    s_usgs = 5.572e-4 * spc + 2.02e-9 * spc**2
+    gap = np.abs(do_saturation(d["water_temp_c"], spc, s_usgs).to_numpy() - sat)
+    pd.DataFrame([dict(spc_max=spc.max(), sal_schemel_max=salinity(spc).max(), sal_usgs_max=s_usgs.max(),
+                       do_sat_diff_max=gap.max(), do_sat_diff_p99=np.percentile(gap, 99), n=len(gap))]).round(6).to_csv(
+        os.path.join(STATS, "salinity_check.csv"), index=False)
+    # 7. hình
     fig, ax = plt.subplots(figsize=(7, 4.2), dpi=130)
     ax.scatter(D, dd, s=5, alpha=0.25, color="#2a78d6", label="một đêm train")
     bins = pd.cut(nights.D, [-6, -2, -1, 0, 0.5, 1, 1.5, 3])
