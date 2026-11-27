@@ -1,27 +1,29 @@
-"""Phân tích ảnh hưởng của đặc trưng lên dự báo bằng GradientSHAP (expected gradients) trên test,
-cho các mô hình đã huấn luyện lại (scripts/final_train.py); dùng cho docs/04_MODEL_TRAINING_EVALUATION.md mục 8.
+"""Phân tích ảnh hưởng của đầu vào lên dự báo bằng GradientSHAP (expected gradients) trên test, cho các mô hình đã
+huấn luyện lại (scripts/final_train.py); dùng cho docs/04_MODEL_TRAINING_EVALUATION.md mục 8.
 
 Phần góp của ô i (một cột tại một mốc của đầu vào) vào dự báo f ở một bước:
   phi_i = TB trên các cặp (x', a) của (x_i - x'_i) x df/dx_i tại x' + a (x - x'),
 với x' là cửa sổ train lấy ngẫu nhiên (tham chiếu), a lấy đều trên (0, 1). Tổng phi trên mọi ô xấp xỉ
 f(x) - TB f(x') (tính đầy đủ), được kiểm tra và ghi lại. Phần góp đổi sang mg/L.
-Cửa sổ được giải thích: cửa sổ test có thời điểm dự báo tròn giờ (mỗi giờ một cửa sổ), 32 tham chiếu mỗi cửa sổ,
-cùng tham chiếu cho mọi bộ đặc trưng; ba seed của mỗi bộ, số liệu là trung bình trên ba seed.
+Cửa sổ được giải thích: cửa sổ test có thời điểm dự báo tròn giờ, 32 tham chiếu mỗi cửa sổ, cùng tham chiếu cho mọi
+bộ đặc trưng; bước dự báo 1 (15 phút) và 24 (6 giờ); ba seed của mỗi bộ, số liệu là trung bình trên ba seed.
+Nhóm đầu vào: mỗi biến đo một nhóm (khóa là tên cột), 24 đặc trưng miền theo common.DOMAIN_GROUPS, sáu cờ một nhóm (co_dien).
 Ghi vào artifacts/analysis/:
   attr_completeness.csv: tương quan giữa tổng phần góp và f(x) - TB f(x'), sai lệch tuyệt đối trung bình.
   attr_by_column.csv, attr_by_group.csv: mức ảnh hưởng = TB trên cửa sổ của |phần góp ròng| (cộng trên 96 mốc,
-    cộng trên các cột của nhóm), kèm độ lệch chuẩn giữa seed và tỉ trọng (%), cho bước 15 phút, 3 giờ, 6 giờ.
-  attr_by_lag.csv: tỉ trọng ảnh hưởng của từng giờ trong 24 giờ trước lúc dự báo, theo nhóm.
-  attr_by_condition.csv: tỉ trọng nhóm theo trạng thái lúc dự báo: nhiệt độ nước, bão hòa từ 130%,
-    ban đêm, ban ngày, và các cửa sổ quanh đợt DO dưới 6 mg/L.
-  attr_pairs.csv: hai nhóm mang thông tin trùng nhau (DO và Bão hòa, Nhiệt độ và Bão hòa): tương quan giữa phần góp
-    ròng của hai nhóm qua các cửa sổ, mức ảnh hưởng của từng nhóm và của tổng hai nhóm.
-  attr_dependence.csv: phần góp ròng TB theo giá trị hiện tại của một số đặc trưng (chia 10 nhóm phân vị).
-  attr_example.csv: phần góp có dấu theo nhóm và mốc của một cửa sổ trước đợt DO thấp sâu nhất.
-  fig_anh_huong_nhom.png, fig_anh_huong_theo_tre.png, fig_anh_huong_theo_dieu_kien.png, fig_phu_thuoc.png,
-  fig_vi_du_anh_huong.png.
+    cộng trên các cột của nhóm), kèm độ lệch chuẩn giữa seed và tỉ trọng (%).
+  attr_by_lag.csv: tỉ trọng ảnh hưởng của từng giờ trong 24 giờ trước thời điểm dự báo (gio_truoc = 1 là giờ gần nhất).
+  attr_by_lag_block.csv: tỉ trọng của bốn khoảng 6 giờ (bằng độ dài khoảng dự báo) của đầu vào: 1 đến 6, 7 đến 12,
+    13 đến 18, 19 đến 24 giờ trước thời điểm dự báo.
+  attr_by_condition.csv: tỉ trọng nhóm theo giai đoạn mùa của thời điểm dự báo (docs/01 mục 3.3).
+  attr_refs_check.csv: với seed 0, chênh lệch lớn nhất (điểm phần trăm) giữa tỉ trọng nhóm tính với 32 và với 64
+    tham chiếu, và sai lệch tính đầy đủ ở hai số tham chiếu: kiểm tra 32 tham chiếu là đủ.
+  fig_anh_huong_nhom.png, fig_anh_huong_theo_tre.png, fig_anh_huong_theo_mua.png: vẽ từ attr_by_group.csv,
+    attr_by_lag.csv, attr_by_condition.csv.
 Chạy từ gốc repo (sau final_train.py): uv run python scripts/attribution.py
+Chỉ vẽ lại hình từ bảng đã ghi:         uv run python scripts/attribution.py --plot
 """
+import argparse
 import os
 
 import matplotlib.pyplot as plt
@@ -29,33 +31,20 @@ import numpy as np
 import pandas as pd
 import torch
 
-from common import CONFIGS, FEATURES, FILLED, FLAGS, load_base_all, solar_elevation_sin, window_starts
-from describe_dataset import episode_spans
-from error_analysis import LEAD, LOW, OUT, SETS, window_conditions
-from figures import AQUA, BLUE, INK2, ORANGE
+from common import CONFIGS, DOMAIN_GROUPS, FEATURES, FILLED, FLAGS, VAR_NAMES, load_base_all, window_starts
+from error_analysis import OUT, SETS, window_conditions
+from plot_style import INK2, SEASON_NAME, panel, save
 from train import FEATURE_SETS, RNNForecaster, final_dir, iter_runs
 
 N_REF = 32                                        # số tham chiếu mỗi cửa sổ
 CHUNK = 64                                        # số cửa sổ mỗi lô
-TARGETS = {"15 phút": 0, "3 giờ": 11, "6 giờ": 23}
-LAG_BINS = [(4 * h, 4 * h + 4, h + 1) for h in range(24)]   # (mốc đầu, mốc cuối tính từ lúc dự báo, giờ thứ mấy trước)
-VAR_NAME = {"do_mg_l": "DO", "water_temp_c": "Nhiệt độ", "ph": "pH", "spc_us_cm": "Độ dẫn",
-            "turbidity_fnu": "Độ đục", "chl_fluor_ug_l": "Chlorophyll"}
-DOMAIN_GROUPS = {                                 # nhóm cơ chế của 24 đặc trưng miền (03_DOMAIN_FEATURES_ANALYSIS mục 4)
-    "Bão hòa": ["do_sat_mgl", "do_sat_pct", "do_deficit"],
-    "Ánh sáng": ["light"],
-    "Quang hợp, hô hấp": ["gpp_now", "er_now"],
-    "Chu kỳ ngày của DO": ["do_change_24h", "do_std_24h", "do_anom_24h"],
-    "Thay đổi ngắn hạn": ["do_change_1h", "do_change_3h", "temp_change_3h"],
-    "Cacbonat": ["ph_change_3h", "ph_change_24h"],
-    "Tảo": ["log_chl"],
-    "Vận chuyển": ["spc_change_24h"],
-    "Triều": ["m2_sin", "m2_cos"],
-    "Lịch": ["hour_sin", "hour_cos", "hour2_sin", "hour2_cos", "doy_sin", "doy_cos"],
-}
-DEPENDENCE = ["do_anom_24h", "gpp_now", "do_sat_pct", "light"]   # đặc trưng vẽ quan hệ giá trị và phần góp
-PAIRS = [("DO", "Bão hòa"), ("Nhiệt độ", "Bão hòa")]
-TEMP_BINS = ([-np.inf, 18, 24, np.inf], ["dưới 18 độ C", "18 đến 24 độ C", "từ 24 độ C"])
+TARGETS = {1: 0, 24: 23}                          # bước dự báo: chỉ số đầu ra (bước 1 = 15 phút, bước 24 = 6 giờ)
+STEP_NAME = {1: "15 phút", 24: "6 giờ"}
+LAG_BINS = [(4 * h, 4 * h + 4, h + 1) for h in range(24)]   # (mốc đầu, mốc cuối tính từ thời điểm dự báo, giờ thứ mấy)
+GROUP_NAME = {**VAR_NAMES, **{k: n for k, n, _ in DOMAIN_GROUPS}, "co_dien": "Cờ điền"}   # khóa nhóm: tên chuẩn
+LAG_BLOCKS = [(1, 6), (7, 12), (13, 18), (19, 24)]   # khoảng giờ trước thời điểm dự báo, mỗi khoảng 6 giờ
+N_REF_CHECK = 64                                      # số tham chiếu của lần kiểm tra độ đủ (seed 0)
+STATE_NAME = {"toan_bo": "Toàn bộ test", **{k: v.replace(" (", "\n(") for k, v in SEASON_NAME.items()}}
 
 
 def columns(fs):
@@ -64,12 +53,12 @@ def columns(fs):
 
 
 def groups(fs):
-    """{tên nhóm: chỉ số cột}: mỗi biến đo một nhóm, đặc trưng miền theo DOMAIN_GROUPS, sáu cờ một nhóm."""
+    """{khóa nhóm: chỉ số cột}: mỗi biến đo một nhóm, đặc trưng miền theo DOMAIN_GROUPS, sáu cờ một nhóm."""
     cols = columns(fs)
-    g = {VAR_NAME[c]: [cols.index(c)] for c in FEATURES}
+    g = {c: [cols.index(c)] for c in FEATURES}
     if fs != "base":
-        g.update({k: [cols.index(c) for c in v] for k, v in DOMAIN_GROUPS.items()})
-    g["Cờ điền"] = [cols.index(c) for c in FLAGS]
+        g.update({k: [cols.index(c) for c in v] for k, _, v in DOMAIN_GROUPS})
+    g["co_dien"] = [cols.index(c) for c in FLAGS]
     return g
 
 
@@ -80,7 +69,7 @@ def final_models(fs, model="lstm", cfg="24h_6h"):
 
 
 def load_model(path, device):
-    """Mô hình và tensor đầu vào chung X (chuẩn hóa bằng scaler lưu cùng mô hình)."""
+    """Mô hình và tham số chuẩn hóa lưu cùng mô hình (trung bình, độ lệch chuẩn của các cột số)."""
     ck = torch.load(path, map_location=device)
     c = ck["config"]
     model = RNNForecaster(c["model"], c["n_feat"], c["n_out"], c["hidden"], c["layers"], c["dropout"]).to(device)
@@ -89,32 +78,35 @@ def load_model(path, device):
 
 
 def explain(model, X, t_explain, refs, alphas, n_in, sd, device, gidx):
-    """Phần góp ròng theo cột (W, C, mục tiêu) và theo nhóm, mốc (W, G, n_in, mục tiêu), kèm kiểm tra tính đầy đủ."""
+    """Phần góp ròng theo cột (W, C, mục tiêu) và theo nhóm, mốc (W, G, n_in, mục tiêu), kèm kiểm tra tính đầy đủ;
+    số tham chiếu mỗi cửa sổ là số cột của refs."""
     # cuDNN chỉ lan truyền ngược RNN ở chế độ train; tắt dropout để chế độ train cho đúng kết quả như chế độ eval
     model.train()
     model.rnn.dropout = 0.0
     ai = torch.arange(-n_in, 0, device=device)
     win = lambda t: X[torch.as_tensor(t, device=device)[:, None] + ai]   # noqa: E731
     W, C, K, G = len(t_explain), X.shape[1], len(TARGETS), len(gidx)
+    n_ref = refs.shape[1]
+    chunk = CHUNK * N_REF // n_ref                          # giữ số chuỗi mỗi lô như khi dùng N_REF tham chiếu
     col = np.zeros((W, C, K), np.float32)
     lag = np.zeros((W, G, n_in, K), np.float32)
     gap = np.zeros((W, K, 2), np.float32)
     M = torch.zeros(C, G, device=device)
     for j, idx in enumerate(gidx):
         M[idx, j] = 1
-    for i in range(0, W, CHUNK):
-        x = win(t_explain[i:i + CHUNK])
+    for i in range(0, W, chunk):
+        x = win(t_explain[i:i + chunk])
         B = len(x)
-        xr = x.repeat_interleave(N_REF, 0)
+        xr = x.repeat_interleave(n_ref, 0)
         xb = win(refs[i:i + B].ravel())
         a = torch.as_tensor(alphas[i:i + B].ravel(), device=device)[:, None, None]
         xi = (xb + a * (xr - xb)).requires_grad_(True)
         out = model(xi)
         with torch.no_grad():
-            fx, fb = model(x), model(xb).view(B, N_REF, -1).mean(1)
+            fx, fb = model(x), model(xb).view(B, n_ref, -1).mean(1)
         for k, j in enumerate(TARGETS.values()):
             gr, = torch.autograd.grad(out[:, j].sum(), xi, retain_graph=k < K - 1)
-            p = ((xr - xb) * gr).view(B, N_REF, n_in, C).mean(1) * sd                 # (B, n_in, C), mg/L
+            p = ((xr - xb) * gr).view(B, n_ref, n_in, C).mean(1) * sd                 # (B, n_in, C), mg/L
             col[i:i + B, :, k] = p.sum(1).detach().cpu().numpy()
             lag[i:i + B, :, :, k] = (p @ M).permute(0, 2, 1).detach().cpu().numpy()
             gap[i:i + B, k, 0] = p.sum((1, 2)).detach().cpu().numpy()
@@ -124,7 +116,12 @@ def explain(model, X, t_explain, refs, alphas, n_in, sd, device, gidx):
 
 
 def main():
-    """Tính phần góp cho mọi bộ đặc trưng đã chấm test, ghi bảng và hình."""
+    """Tính phần góp cho mọi bộ đặc trưng đã chấm test, ghi bảng và hình; --plot chỉ vẽ lại từ bảng đã ghi."""
+    p = argparse.ArgumentParser()
+    p.add_argument("--plot", action="store_true", help="chỉ vẽ lại hình từ attr_by_group.csv, attr_by_lag.csv")
+    if p.parse_args().plot:
+        figures()
+        return
     os.makedirs(OUT, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.backends.cudnn.deterministic = True
@@ -135,20 +132,11 @@ def main():
     st = window_starts(d0, n_in, n_out)
     t_explain = st["test"][d0.datetime_pst[st["test"]].dt.minute.to_numpy() == 0]
     cond = window_conditions(d0, t_explain)
-    cond["night"] = np.asarray(solar_elevation_sin(d0.datetime_pst.iloc[t_explain - 1])) <= 0   # mặt trời dưới chân trời
-    test = d0[d0["split"] == "test"]
-    events = [(test.index[0] + a, test.index[0] + a + ln - 1) for a, ln in episode_spans(test.do_mg_l.to_numpy() < LOW)]
-    near_low = np.zeros(len(t_explain), bool)
-    for s_, e_ in events:
-        near_low |= (t_explain >= s_ - LEAD) & (t_explain <= e_)
-    deepest = min(events, key=lambda se: d0.do_mg_l[se[0]:se[1] + 1].min())
-    ex_i = int(np.argmin(np.abs(t_explain - (deepest[0] - LEAD))))
     res = {}
     for fs in sets:
         d = d_all[fs]
         gi = groups(fs)
-        cols, gnames = columns(fs), list(gi)
-        out = dict(col=[], lag=[], gap=[])
+        out = dict(col=[], lag=[], gap=[], check=None)
         for s, path in enumerate(final_models(fs)):
             model, mu, scale = load_model(path, device)
             num = FEATURE_SETS[fs][1]
@@ -168,205 +156,151 @@ def main():
             out["col"].append(col)
             out["lag"].append(lag)
             out["gap"].append(gap)
+            if s == 0:                                                           # kiểm tra độ đủ của N_REF
+                rc = np.random.default_rng(1000)
+                refs2 = rc.choice(st["train"], (len(t_explain), N_REF_CHECK))
+                alphas2 = rc.random((len(t_explain), N_REF_CHECK)).astype(np.float32)
+                _, lag2, gap2 = explain(model, X, t_explain, refs2, alphas2, n_in, scale[0], device, list(gi.values()))
+                out["check"] = (lag, gap, lag2, gap2)
             print(f"{fs} seed {s}: xong", flush=True)
-        res[fs] = dict(col=np.stack(out["col"]), lag=np.stack(out["lag"]), gap=np.stack(out["gap"]), cols=cols,
-                       gnames=gnames, gidx=gi, d=d)
-    write_tables(res, cond, near_low, ex_i, t_explain, n_in)
+        res[fs] = dict(col=np.stack(out["col"]), lag=np.stack(out["lag"]), gap=np.stack(out["gap"]), cols=columns(fs),
+                       gnames=list(gi), gidx=gi, check=out["check"])
+    write_tables(res, cond, n_in)
+    figures()
 
 
 def share_rows(imp, names, fs, extra):
-    """Dòng bảng: mức ảnh hưởng TB, độ lệch chuẩn giữa seed, tỉ trọng (%) cho từng tên và mục tiêu.
-    imp: (seed, tên, mục tiêu)."""
+    """Dòng bảng: mức ảnh hưởng TB, độ lệch chuẩn giữa seed, tỉ trọng (%) cho từng tên và bước. imp: (seed, tên, bước)."""
     rows = []
-    for k, tgt in enumerate(TARGETS):
+    for k, step in enumerate(TARGETS):
         m, sd = imp[:, :, k].mean(0), imp[:, :, k].std(0, ddof=1)
         share = 100 * imp[:, :, k] / imp[:, :, k].sum(1, keepdims=True)
         for j, n in enumerate(names):
-            rows.append(dict(bo=SETS[fs][0], muc_tieu=tgt, **extra(j), anh_huong_mgl=m[j], sd_giua_seed=sd[j],
+            rows.append(dict(bo=SETS[fs][0], buoc=step, **extra(j), anh_huong_mgl=m[j], sd_giua_seed=sd[j],
                              ti_trong_pct=share[:, j].mean()))
     return rows
 
 
-def write_tables(res, cond, near_low, ex_i, t_explain, n_in):
-    """Gộp phần góp thành các bảng, hình của docstring."""
-    comp, bycol, bygrp, bylag, bycond, dep, pairs = [], [], [], [], [], [], []
+def write_tables(res, cond, n_in):
+    """Gộp phần góp thành các bảng attr_*.csv của docstring."""
+    comp, bycol, bygrp, bylag, byblock, bycond, check = [], [], [], [], [], [], []
     for fs, r in res.items():
         col, lag, gap = r["col"], r["lag"], r["gap"]                 # (S, W, C, K), (S, W, G, L, K), (S, W, K, 2)
-        for k, tgt in enumerate(TARGETS):
+        for k, step in enumerate(TARGETS):
             for s in range(len(gap)):
                 g = gap[s, :, k]
-                comp.append(dict(bo=SETS[fs][0], muc_tieu=tgt, seed=s, tuong_quan=np.corrcoef(g[:, 0], g[:, 1])[0, 1],
+                comp.append(dict(bo=SETS[fs][0], buoc=step, seed=s, tuong_quan=np.corrcoef(g[:, 0], g[:, 1])[0, 1],
                                  sai_lech_tb_mgl=np.abs(g[:, 0] - g[:, 1]).mean(), do_lon_tb_mgl=np.abs(g[:, 1]).mean()))
         group_of = {c: n for n, idx in r["gidx"].items() for c in [r["cols"][i] for i in idx]}
         imp_col = np.abs(col).mean(1)                                # (S, C, K)
         bycol += share_rows(imp_col, r["cols"], fs, lambda j: dict(cot=r["cols"][j], nhom=group_of[r["cols"][j]]))
         gnet = lag.sum(3)                                            # phần góp ròng theo nhóm (S, W, G, K)
-        imp_g = np.abs(gnet).mean(1)
-        bygrp += share_rows(imp_g, r["gnames"], fs, lambda j: dict(nhom=r["gnames"][j]))
-        # theo khoảng trễ: |phần góp ròng của nhóm trong khoảng| rồi lấy tỉ trọng trên tổng các khoảng và nhóm
-        for k, tgt in enumerate(TARGETS):
-            tot = []
-            for a, b, lab in LAG_BINS:
-                v = np.abs(lag[:, :, :, n_in - b:n_in - a, k].sum(3)).mean(1)       # (S, G); mốc cuối là chỉ số n_in - 1
-                tot.append(v)
-            tot = np.stack(tot, 1)                                                  # (S, khoảng, G)
-            share = 100 * tot / tot.sum((1, 2), keepdims=True)
-            for bi, (_, _, lab) in enumerate(LAG_BINS):
-                bylag.append(dict(bo=SETS[fs][0], muc_tieu=tgt, gio_truoc=lab, nhom="tất cả",
+        bygrp += share_rows(np.abs(gnet).mean(1), r["gnames"], fs, lambda j: dict(nhom=r["gnames"][j]))
+        # theo giờ trước thời điểm dự báo: |phần góp ròng của nhóm trong giờ đó|, tỉ trọng trên tổng các giờ và nhóm
+        for k, step in enumerate(TARGETS):
+            tot = np.stack([np.abs(lag[:, :, :, n_in - b:n_in - a, k].sum(3)).mean(1) for a, b, _ in LAG_BINS], 1)
+            share = 100 * tot / tot.sum((1, 2), keepdims=True)                       # (S, giờ, G)
+            for bi, (_, _, h) in enumerate(LAG_BINS):
+                bylag.append(dict(bo=SETS[fs][0], buoc=step, gio_truoc=h, nhom="tat_ca",
                                   ti_trong_pct=share[:, bi].sum(1).mean()))
                 for j, n in enumerate(r["gnames"]):
-                    bylag.append(dict(bo=SETS[fs][0], muc_tieu=tgt, gio_truoc=lab, nhom=n,
+                    bylag.append(dict(bo=SETS[fs][0], buoc=step, gio_truoc=h, nhom=n,
                                       ti_trong_pct=share[:, bi, j].mean()))
-        # theo điều kiện
-        tb = pd.cut(cond.water_temp_c, TEMP_BINS[0], right=False, labels=TEMP_BINS[1]).astype(str).to_numpy()
-        sel = ([("toàn bộ test", np.ones(len(tb), bool))] + [(f"nước {b}", tb == b) for b in TEMP_BINS[1]]
-               + [("bão hòa từ 130%", cond.do_sat_pct.to_numpy() >= 130),
-                  ("ban đêm", cond.night.to_numpy()), ("ban ngày", ~cond.night.to_numpy()),
-                  ("quanh đợt DO dưới 6 mg/L", near_low)])
+            for a, b in LAG_BLOCKS:                                                  # khoảng 6 giờ: cộng các giờ a..b
+                byblock.append(dict(bo=SETS[fs][0], buoc=step, khoang=f"{a}_den_{b}",
+                                    ti_trong_pct=share[:, a - 1:b].sum((1, 2)).mean()))
+        # theo giai đoạn mùa của thời điểm dự báo
+        sel = [("toan_bo", np.ones(len(cond), bool))] + [(k, (cond.season == k).to_numpy()) for k in SEASON_NAME]
         for name, m in sel:
-            if not m.any():
-                continue
             v = np.abs(gnet[:, m]).mean(1)                                           # (S, G, K)
             share = 100 * v / v.sum(1, keepdims=True)
-            for k, tgt in enumerate(TARGETS):
+            for k, step in enumerate(TARGETS):
                 for j, n in enumerate(r["gnames"]):
-                    bycond.append(dict(bo=SETS[fs][0], muc_tieu=tgt, dieu_kien=name, so_cua_so=int(m.sum()), nhom=n,
+                    bycond.append(dict(bo=SETS[fs][0], buoc=step, trang_thai=name, so_cua_so=int(m.sum()), nhom=n,
                                        ti_trong_pct=share[:, j, k].mean()))
-        if fs != "base":
-            gn = r["gnames"]
-            for a, b in PAIRS:
-                ia, ib = gn.index(a), gn.index(b)
-                for k, tgt in enumerate(TARGETS):
-                    va, vb = gnet[:, :, ia, k], gnet[:, :, ib, k]                   # (S, W)
-                    pairs.append(dict(bo=SETS[fs][0], muc_tieu=tgt, nhom_a=a, nhom_b=b,
-                                      tuong_quan=np.mean([np.corrcoef(va[s], vb[s])[0, 1] for s in range(len(va))]),
-                                      anh_huong_a=np.abs(va).mean(), anh_huong_b=np.abs(vb).mean(),
-                                      anh_huong_tong=np.abs(va + vb).mean()))
-            d = r["d"]
-            for c in DEPENDENCE:
-                ci = r["cols"].index(c)
-                val = d[c].to_numpy()[t_explain - 1]
-                q = pd.qcut(val, 10, labels=False, duplicates="drop")
-                for k, tgt in enumerate(TARGETS):
-                    contrib = col[:, :, ci, k].mean(0)
-                    for b in np.unique(q):
-                        dep.append(dict(cot=c, muc_tieu=tgt, nhom_phan_vi=int(b), gia_tri_tb=val[q == b].mean(),
-                                        phan_gop_tb_mgl=contrib[q == b].mean()))
-    pd.DataFrame(comp).round(6).to_csv(os.path.join(OUT, "attr_completeness.csv"), index=False)
-    bycol, bygrp = pd.DataFrame(bycol), pd.DataFrame(bygrp)
-    bycol.round(6).to_csv(os.path.join(OUT, "attr_by_column.csv"), index=False)
-    bygrp.round(6).to_csv(os.path.join(OUT, "attr_by_group.csv"), index=False)
-    bylag = pd.DataFrame(bylag)
-    bylag.round(6).to_csv(os.path.join(OUT, "attr_by_lag.csv"), index=False)
-    bycond = pd.DataFrame(bycond)
-    bycond.round(6).to_csv(os.path.join(OUT, "attr_by_condition.csv"), index=False)
-    pd.DataFrame(pairs).round(6).to_csv(os.path.join(OUT, "attr_pairs.csv"), index=False)
-    dep = pd.DataFrame(dep)
-    dep.round(6).to_csv(os.path.join(OUT, "attr_dependence.csv"), index=False)
-    # ví dụ một cửa sổ (bộ cuối cùng, thường là bộ nhiều đặc trưng nhất), bước 6 giờ
-    fs = list(res)[-1]
-    r = res[fs]
-    ex = r["lag"][:, ex_i, :, :, 2].mean(0)                                          # (G, L)
-    t0 = r["d"].datetime_pst[t_explain[ex_i]]
-    exdf = pd.DataFrame(ex.T, columns=r["gnames"])
-    exdf.insert(0, "gio_truoc", (np.arange(n_in)[::-1] + 1) * 0.25)
-    exdf.round(5).to_csv(os.path.join(OUT, "attr_example.csv"), index=False)
-    figures(bygrp, bylag, bycond, dep, ex, r["gnames"], t0, fs, n_in)
-    print(pd.DataFrame(comp).groupby(["bo", "muc_tieu"])[["tuong_quan", "sai_lech_tb_mgl", "do_lon_tb_mgl"]].mean().round(3))
-    print(bygrp[bygrp.muc_tieu == "6 giờ"].sort_values(["bo", "ti_trong_pct"], ascending=False).round(2).to_string())
+        # độ đủ của số tham chiếu: tỉ trọng nhóm với N_REF và N_REF_CHECK tham chiếu (seed 0)
+        lag1, gap1, lag2, gap2 = r["check"]
+        sh = [100 * v / v.sum(0, keepdims=True) for v in (np.abs(x.sum(2)).mean(0) for x in (lag1, lag2))]  # (G, K)
+        for k, step in enumerate(TARGETS):
+            check.append(dict(bo=SETS[fs][0], buoc=step, so_tham_chieu=N_REF, so_tham_chieu_kiem_tra=N_REF_CHECK,
+                              chenh_ti_trong_max_diem_pct=np.abs(sh[0][:, k] - sh[1][:, k]).max(),
+                              sai_lech_tb_mgl=np.abs(gap1[:, k, 0] - gap1[:, k, 1]).mean(),
+                              sai_lech_tb_mgl_kiem_tra=np.abs(gap2[:, k, 0] - gap2[:, k, 1]).mean()))
+    for name, rows in [("completeness", comp), ("by_column", bycol), ("by_group", bygrp), ("by_lag", bylag),
+                       ("by_lag_block", byblock), ("by_condition", bycond), ("refs_check", check)]:
+        pd.DataFrame(rows).round(6).to_csv(os.path.join(OUT, f"attr_{name}.csv"), index=False)
+    print(pd.DataFrame(comp).groupby(["bo", "buoc"])[["tuong_quan", "sai_lech_tb_mgl", "do_lon_tb_mgl"]].mean().round(3))
 
 
-def figures(bygrp, bylag, bycond, dep, ex, gnames, t0, fs, n_in):
-    """Năm hình của phân tích ảnh hưởng."""
-    tgt_color = {"15 phút": BLUE, "3 giờ": AQUA, "6 giờ": ORANGE}
-    # 1. tỉ trọng nhóm, từng bộ, ba bước dự báo
-    sets = list(bygrp.bo.unique())
-    fig, axes = plt.subplots(1, len(sets), figsize=(6 * len(sets), 4.6), gridspec_kw={"width_ratios": [
-        bygrp[bygrp.bo == b].nhom.nunique() for b in sets]} if len(sets) > 1 else None)
+def figures():
+    """Ba hình, vẽ từ bảng đã ghi: tỉ trọng theo nhóm (mỗi bộ một khung, hai bước), theo giờ trước thời điểm dự
+    báo (mỗi bước một khung, các bộ cùng khung), theo giai đoạn mùa (mỗi bộ một hàng, mỗi giai đoạn một khung)."""
+    bygrp = pd.read_csv(os.path.join(OUT, "attr_by_group.csv"))
+    bylag = pd.read_csv(os.path.join(OUT, "attr_by_lag.csv"))
+    color = {tag: c for tag, c in SETS.values()}
+    sets = list(dict.fromkeys(bygrp.bo))
+    sizes = [bygrp[bygrp.bo == b].nhom.nunique() for b in sets]
+    fig, axes = plt.subplots(len(sets), 1, figsize=(5.5, 0.22 * sum(sizes) + 1.2),
+                             gridspec_kw={"height_ratios": sizes})
     axes = np.atleast_1d(axes)
-    for ax, b in zip(axes, sets):
+    h = 0.38
+    for ax, b, key in zip(axes, sets, "abc"):
         g = bygrp[bygrp.bo == b]
-        order = g[g.muc_tieu == "6 giờ"].sort_values("ti_trong_pct").nhom.tolist()
+        order = g[g.buoc == 24].sort_values("ti_trong_pct").nhom.tolist()
         y = np.arange(len(order))
-        h = 0.8 / len(TARGETS)
-        for k, tgt in enumerate(TARGETS):
-            v = g[g.muc_tieu == tgt].set_index("nhom").loc[order, "ti_trong_pct"]
-            ax.barh(y + (k - 1) * h, v, h * 0.9, color=tgt_color[tgt], label=f"dự báo {tgt}")
-        ax.set_yticks(y, order)
-        ax.set_xlabel("tỉ trọng ảnh hưởng (%)")
-        ax.set_title(f"{b}: nhóm đầu vào theo mức ảnh hưởng")
-        ax.grid(axis="x", color="#e6e5e0")
+        for off, step, alpha in [(h / 2, 1, 0.45), (-h / 2, 24, 1.0)]:
+            v = g[g.buoc == step].set_index("nhom").loc[order, "ti_trong_pct"]
+            ax.barh(y + off, v, h * 0.95, color=color[b], alpha=alpha, label=f"Bước {STEP_NAME[step]}")
+        ax.set_yticks(y, [GROUP_NAME[n] for n in order])
+        ax.set_ylim(-0.6, len(order) - 0.4)
+        ax.grid(axis="x")
         ax.grid(axis="y", visible=False)
-    axes[-1].legend(loc="lower right")
+        ax.legend(loc="lower right")
+        panel(ax, key, b)
+    axes[-1].set_xlabel("Tỉ trọng ảnh hưởng (%)")
     fig.tight_layout()
-    fig.savefig(os.path.join(OUT, "fig_anh_huong_nhom.png"), dpi=150)
-    plt.close(fig)
-    # 2. theo giờ trước lúc dự báo, tổng mọi nhóm, từng bộ, ba bước
-    fig, axes = plt.subplots(1, len(sets), figsize=(6 * len(sets), 3.6), sharey=True)
-    axes = np.atleast_1d(axes)
-    for ax, b in zip(axes, sets):
-        g = bylag[(bylag.bo == b) & (bylag.nhom == "tất cả")]
-        for tgt in TARGETS:
-            v = g[g.muc_tieu == tgt].sort_values("gio_truoc")
-            ax.plot(v.gio_truoc, v.ti_trong_pct, "o-", ms=3.5, lw=1.8, color=tgt_color[tgt], label=f"dự báo {tgt}")
+    save(fig, os.path.join(OUT, "fig_anh_huong_nhom.png"))
+    fig, axes = plt.subplots(1, len(TARGETS), figsize=(7, 2.7), sharey=True)
+    for ax, step, key in zip(axes, TARGETS, "ab"):
+        for b in sets:
+            g = bylag[(bylag.bo == b) & (bylag.buoc == step) & (bylag.nhom == "tat_ca")].sort_values("gio_truoc")
+            ax.plot(g.gio_truoc, g.ti_trong_pct, "o-", ms=2.5, color=color[b], label=b)
+        for x in (6.5, 12.5, 18.5):                                                # ranh giới các khoảng 6 giờ
+            ax.axvline(x, color=INK2, lw=0.5, ls=":")
         ax.set_xticks([1, 6, 12, 18, 24])
-        ax.set_xlabel("giờ thứ mấy trước lúc dự báo")
-        ax.set_title(f"{b}: ảnh hưởng theo thời gian trong đầu vào")
-    axes[0].set_ylabel("tỉ trọng ảnh hưởng (%)")
-    axes[0].legend()
+        ax.set_xlabel("Số giờ trước thời điểm dự báo")
+        panel(ax, key, f"Bước dự báo {STEP_NAME[step]}")
+    axes[0].set_ylabel("Tỉ trọng ảnh hưởng (%)")
+    axes[0].legend(loc="upper right")
     fig.tight_layout()
-    fig.savefig(os.path.join(OUT, "fig_anh_huong_theo_tre.png"), dpi=150)
-    plt.close(fig)
-    # 3. theo trạng thái: bản đồ nhiệt tỉ trọng nhóm (hàng) theo trạng thái (cột), từng bộ, bước 6 giờ
-    conds = list(dict.fromkeys(bycond.dieu_kien))
-    fig, axes = plt.subplots(1, len(sets), figsize=(6.2 * len(sets), 6.4), gridspec_kw={"width_ratios": [1] * len(sets)})
-    axes = np.atleast_1d(axes)
-    for ax, b in zip(axes, sets):
-        g = bycond[(bycond.bo == b) & (bycond.muc_tieu == "6 giờ")]
-        order = g[g.dieu_kien == "toàn bộ test"].sort_values("ti_trong_pct", ascending=False).nhom.tolist()
-        M = g.pivot(index="nhom", columns="dieu_kien", values="ti_trong_pct").loc[order, conds].to_numpy()
-        ax.imshow(M, aspect="auto", cmap="Blues", vmin=0, vmax=max(30, np.nanmax(M)))
-        for (r_, c_), v in np.ndenumerate(M):
-            ax.text(c_, r_, f"{v:.0f}", ha="center", va="center", fontsize=7.5, color="white" if v > 20 else INK2)
-        n = g.drop_duplicates("dieu_kien").set_index("dieu_kien").loc[conds, "so_cua_so"]
-        ax.set_xticks(range(len(conds)), [f"{c}\n({k} cửa sổ)" for c, k in zip(conds, n)], rotation=35, ha="right",
-                      fontsize=7.5)
-        ax.set_yticks(range(len(order)), order)
-        ax.set_title(f"{b}, dự báo 6 giờ: tỉ trọng ảnh hưởng (%) theo trạng thái")
-        ax.grid(False)
-    fig.tight_layout()
-    fig.savefig(os.path.join(OUT, "fig_anh_huong_theo_dieu_kien.png"), dpi=150)
-    plt.close(fig)
-    # 4. quan hệ giá trị đặc trưng và phần góp
-    if len(dep):
-        fig, axes = plt.subplots(1, len(DEPENDENCE), figsize=(12, 3.2))
-        for ax, c in zip(axes, DEPENDENCE):
-            for tgt in TARGETS:
-                g = dep[(dep.cot == c) & (dep.muc_tieu == tgt)]
-                ax.plot(g.gia_tri_tb, g.phan_gop_tb_mgl, "o-", ms=4, lw=1.5, color=tgt_color[tgt], label=f"dự báo {tgt}")
-            ax.axhline(0, color=INK2, lw=0.7)
-            ax.set_title(c)
-            ax.set_xlabel("giá trị lúc dự báo")
-        axes[0].set_ylabel("phần góp ròng TB (mg/L)")
-        axes[0].legend(fontsize=7.5)
-        fig.tight_layout()
-        fig.savefig(os.path.join(OUT, "fig_phu_thuoc.png"), dpi=150)
-        plt.close(fig)
-    # 5. ví dụ một cửa sổ: phần góp có dấu theo nhóm và mốc
-    order = np.argsort(-np.abs(ex).sum(1))[:8]
-    lim = np.abs(ex[order]).max()
-    fig, ax = plt.subplots(figsize=(11, 3.8))
-    im = ax.imshow(ex[order], aspect="auto", cmap="RdBu_r", vmin=-lim, vmax=lim,
-                   extent=[-n_in * 0.25, 0, len(order) - 0.5, -0.5])
-    ax.set_yticks(range(len(order)), [gnames[i] for i in order])
-    ax.set_xlabel("giờ trước lúc dự báo")
-    ax.set_title(f"{sets[-1]}, dự báo 6 giờ lúc {t0:%Y-%m-%d %H:%M}: phần góp theo nhóm và mốc "
-                 f"(đỏ đẩy dự báo lên, xanh kéo xuống)")
-    ax.grid(False)
-    fig.colorbar(im, ax=ax, label="mg/L")
-    fig.tight_layout()
-    fig.savefig(os.path.join(OUT, "fig_vi_du_anh_huong.png"), dpi=150)
-    plt.close(fig)
+    save(fig, os.path.join(OUT, "fig_anh_huong_theo_tre.png"))
+    fig_states(pd.read_csv(os.path.join(OUT, "attr_by_condition.csv")), sets, sizes, color)
+
+
+def fig_states(bycond, sets, sizes, color):
+    """Tỉ trọng của mọi nhóm ở bước 6 giờ theo giai đoạn mùa của thời điểm dự báo: mỗi bộ một hàng khung, toàn bộ test
+    và mỗi giai đoạn mùa một khung; nhóm xếp theo tỉ trọng trên toàn bộ test, cùng thứ tự trong cả hàng."""
+    g24 = bycond[bycond.buoc == 24]
+    states = list(STATE_NAME)
+    fig = plt.figure(figsize=(7.2, 0.24 * sum(sizes) + 2.2), layout="constrained")
+    subs = fig.subfigures(len(sets), 1, height_ratios=[n + 3 for n in sizes])
+    for sub, b, key in zip(np.atleast_1d(subs), sets, "abc"):
+        g = g24[g24.bo == b]
+        order = g[g.trang_thai == "toan_bo"].sort_values("ti_trong_pct").nhom.tolist()
+        top = g.ti_trong_pct.max()
+        axes = sub.subplots(1, len(states), sharey=True)
+        for ax, st in zip(axes, states):
+            v = g[g.trang_thai == st].set_index("nhom").loc[order, "ti_trong_pct"]
+            ax.barh(np.arange(len(order)), v, 0.7, color=color[b])
+            ax.set_xlim(0, top * 1.08)
+            ax.set_title(STATE_NAME[st], loc="center", fontsize=8)
+            ax.grid(axis="x")
+            ax.grid(axis="y", visible=False)
+            ax.tick_params(axis="y", length=0)
+        axes[0].set_yticks(np.arange(len(order)), [GROUP_NAME[n] for n in order])
+        sub.supxlabel("Tỉ trọng ảnh hưởng (%)", fontsize=8)
+        sub.suptitle(f"({key}) {b}", x=0.0, ha="left", fontsize=9)
+    save(fig, os.path.join(OUT, "fig_anh_huong_theo_mua.png"))
 
 
 if __name__ == "__main__":

@@ -1,85 +1,78 @@
 # Làm sạch dữ liệu
 
-Tài liệu mô tả cách làm sạch ba tập train, val, test (ranh giới ở [01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 4) trước khi đưa vào mô hình dự báo oxy hòa tan (DO). Quy trình cài đặt trong scripts/build_base_splits.py, kết quả ghi vào dataset/base_splits/. Quy trình có hai bước, cả hai chỉ dùng quá khứ:
-1. loại giá trị ngoài miền vật lý (mục 3);
-2. điền mọi ô trống bằng số đo thật gần nhất phía trước và gắn cờ 1 (mục 4).
+Tài liệu này mô tả cách làm sạch ba tập train, val, test ([01_DATASET_ANALYSIS.md](01_DATASET_ANALYSIS.md) mục 4) trước khi đưa vào mô hình. Quy trình gồm hai bước, cả hai đều nhân quả (chỉ dùng số đo tại mốc đang xét và các mốc trước):
 
-## 1. Khái niệm
+1. coi giá trị ngoài miền vật lý là ô trống (mục 2);
+2. điền mọi ô trống bằng số đo thật gần nhất phía trước của cùng biến và gắn cờ điền bằng 1 (mục 3, 4).
 
-| Khái niệm | Nghĩa |
-|---|---|
-| Mốc | Một dòng dữ liệu; các mốc cách nhau 15 phút, mỗi mốc có sáu biến |
-| Khoảng trống | Các ô không có giá trị (NA) nằm liền nhau của cùng một biến |
-| Thời điểm dự báo | Thời điểm hiện tại của một lần dự báo |
-| Đầu vào | Đoạn dữ liệu quá khứ đưa cho mô hình, kết thúc ngay trước thời điểm dự báo; đầu vào 24 giờ là 96 mốc |
-| Nhãn | DO đo thực tế trong khoảng cần dự báo, bắt đầu từ thời điểm dự báo; dùng để tính sai số |
-| Cửa sổ | Một cặp đầu vào và nhãn, tức một mẫu học hoặc một mẫu đánh giá; thời điểm dự báo dời 15 phút một lần |
-| Nhân quả | Giá trị tại một mốc chỉ được tính từ số đo tại chính mốc đó và các mốc trước nó |
+Quy trình cài đặt trong scripts/build_base_splits.py, kết quả ghi vào dataset/base_splits/. Thuật ngữ chung ở [README.md](README.md) mục 2.
 
-## 2. Nguyên tắc
+## 1. Nguyên tắc
 
-1. Không sửa dataset/raw/. Dữ liệu sau làm sạch ghi vào dataset/base_splits/; mọi ô được điền đều có cờ (mục 5).
-2. Nhân quả: không dùng số đo phía sau khoảng trống. Nếu dùng, cửa sổ có thời điểm dự báo nằm trong khoảng trống sẽ gián tiếp thấy tương lai; và khi hệ thống web chạy thật, số đo phía sau chưa tồn tại. Nhờ vậy quy trình chạy y hệt khi huấn luyện, khi đánh giá và khi dùng thật.
+1. Không sửa dataset/raw/. Dữ liệu sau làm sạch ghi vào dataset/base_splits/, và mọi ô được điền đều được đánh dấu bằng cờ điền (mục 4).
+2. Nhân quả: không dùng số đo phía sau một khoảng trống để điền khoảng trống đó. Nếu dùng, cửa sổ có thời điểm dự báo nằm trong khoảng trống sẽ gián tiếp thấy tương lai; và khi hệ thống web chạy thật, số đo phía sau chưa tồn tại. Nhờ vậy quy trình chạy y hệt khi huấn luyện, khi đánh giá và khi dùng thật.
 3. Một quy trình cho cả ba tập, chạy liền mạch qua ranh giới: đầu val được điền từ số đo cuối của train, đầu test từ số đo cuối của val.
-4. Sai số chỉ tính trên DO đo thật; giá trị điền chỉ dùng làm đầu vào (mục 5).
+4. Sai số chỉ tính trên DO đo thật; giá trị điền chỉ được dùng làm đầu vào.
 
-## 3. Kiểm tra miền giá trị
+## 2. Kiểm tra miền giá trị
 
-Giá trị nằm ngoài miền dưới đây được coi là lỗi (sai đơn vị, cảm biến ở ngoài nước, mã lỗi thiết bị) và xử lý như một ô trống ở mục 4.
+Giá trị nằm ngoài miền ở Bảng 1 được coi là lỗi (sai đơn vị, cảm biến ở ngoài nước, mã lỗi của thiết bị) và xử lý như một ô trống.
 
-| Biến | DO | Nhiệt độ | pH | Độ dẫn | Độ đục | Chlorophyll |
+**Bảng 1.** Miền giá trị chấp nhận của sáu biến.
+
+| Biến | DO | Nhiệt độ nước | pH | Độ dẫn điện | Độ đục | Chlorophyll |
 |---|---|---|---|---|---|---|
-| Miền chấp nhận | 0 đến 20 mg/L | 0 đến 35 độ C | 6 đến 10 | 20 đến 3000 uS/cm | 0 đến 1000 FNU | 0 đến 200 ug/L |
+| Miền chấp nhận | 0 đến 30 mg/L | 0 đến 35 độ C | 6 đến 10 | 20 đến 3000 uS/cm | 0 đến 1000 FNU | 0 đến 200 ug/L |
 
-Trong ba tập không có giá trị nào ngoài miền (artifacts/dataset/cleaning_summary_train.csv). Bước này vẫn được giữ để chặn số đo vô lý khi hệ thống web nhận dữ liệu mới.
+Mỗi miền rộng hơn mọi số đo đã thẩm định của cả file nguồn 2007 đến 2025, để không cắt số đo thật. Riêng DO, file nguồn có số đo tới 28.25 mg/L (trước 2019), cao hơn nhiều so với mức 19.00 mg/L lớn nhất của 2019 đến 2025, nên cận trên của DO là 30 mg/L. Đồng thời miền đủ hẹp để bắt các lỗi thường gặp: giá trị âm của cảm biến, hay ghi sai đơn vị (độ dẫn điện ghi theo mS/cm sẽ nhỏ hơn 20; nhiệt độ ghi theo độ F sẽ lớn hơn 35). Ba tập không có giá trị nào ngoài miền. Bước này vẫn được giữ để chặn số đo vô lý khi hệ thống web nhận dữ liệu mới. Nguồn: artifacts/dataset/cleaning_summary_train.csv, cột out_of_bounds_all (số giá trị ngoài miền), nguon_min, nguon_max (nhỏ nhất, lớn nhất của file nguồn).
 
-## 4. Điền khoảng trống
+## 3. Điền khoảng trống
 
-### 4.1. Khoảng trống trong dữ liệu
+### 3.1. Khoảng trống trong dữ liệu
 
-![Ô trống theo biến, tập và thời gian](../artifacts/dataset/fig_o_thieu.png)
+Một khoảng trống là các ô trống liền nhau của cùng một biến. Từ 2019-01 đến 2025-11, sáu biến có tổng cộng 672 khoảng trống (4417 ô) (tổng cột so_khoang và so_o_trong của artifacts/dataset/gap_length_histogram.csv).
 
-![Khoảng trống theo độ dài](../artifacts/dataset/gap_length_histogram.png)
+![Khoảng trống theo độ dài](../artifacts/dataset/fig_khoang_trong.png)
 
-- Mỗi biến thiếu dưới 0.6% số ô ở mọi tập.
-- Theo số lượng, khoảng trống gần như luôn ngắn: 90% không quá 1 giờ. Theo thời gian, 56% thời gian trống thuộc 12 khoảng dài hơn 1 ngày.
-- Các khoảng trống dài là năm lần cả đầu đo ngừng ghi (dài nhất 64.25 giờ, từ 2020-06-12 13:45), đều trong train. Khoảng trống dài nhất của val là 6.5 giờ (chỉ độ dẫn), của test là 1.5 giờ.
-- Khi DO trống thì gần như cả đầu đo cùng ngừng ghi: 591 trong 618 ô DO trống có cả năm biến còn lại cùng trống.
+**Hình 1.** Khoảng trống của sáu biến theo độ dài, cả ba tập. Các nhóm độ dài có cận trên tăng gấp đôi từ 0.25 giờ (một mốc): nhóm 0.25 gồm các khoảng dài đúng một mốc, nhóm 1 gồm các khoảng dài hơn 0.5 giờ và không quá 1 giờ, tương tự cho các nhóm sau. (a) Số khoảng trống, thang logarit; (b) thời gian trống của các khoảng trống thuộc mỗi nhóm, tính bằng phần trăm tổng thời gian trống: số ô trống của nhóm chia tổng 4417 ô trống của sáu biến, nhân 100 (mỗi ô là 15 phút của một biến). Nguồn: artifacts/dataset/gap_length_histogram.csv; cột can_tren_gio (cận trên của nhóm), so_khoang (a), so_o_trong và pct_thoi_gian (b), pct_so_khoang_cong_don (phần trăm số khoảng trống không dài hơn cận trên, dùng ở ý đầu dưới đây).
 
-Danh sách mọi khoảng trống từ 2 giờ: artifacts/dataset/gap_events.csv.
+- Theo số lượng, khoảng trống gần như luôn ngắn: 90.0% không quá 1 giờ.
+- Theo thời gian, hai nhóm dài nhất (trên 32 giờ) chiếm 21.5% và 34.9% thời gian trống. Hai nhóm này gồm đúng 12 khoảng trống, là sáu biến của hai lần cả đầu đo ngừng ghi: 39.5 giờ từ 2020-04-25 14:30 và 64.25 giờ từ 2020-06-12 13:45, đều trong train. Khoảng trống dài nhất của val là 6.5 giờ (chỉ độ dẫn điện), của test là 1.5 giờ (artifacts/dataset/gap_events.csv, mọi khoảng trống từ 2 giờ trở lên; gap_stats.csv, dòng split = val và split = test, cột maxgap_h_<tên cột biến>).
+- Khi DO trống thì gần như cả đầu đo cùng ngừng ghi: 591 trong 618 ô DO trống có cả năm biến còn lại cùng trống (gap_stats.csv, dòng split = all, cột do_na_ca_dau_do; số ô DO trống: feature_stats.csv, dòng split = all, feature = do_mg_l, cột missing).
 
-### 4.2. Quy tắc điền
+### 3.2. Quy tắc điền
 
-Mỗi ô trống, kể cả ô bị loại ở mục 3, được điền bằng số đo thật gần nhất phía trước của cùng biến, dù khoảng trống dài bao nhiêu, và gắn cờ 1. Ô số đo thật giữ nguyên, cờ 0.
+Mỗi ô trống, kể cả ô bị loại ở mục 2, được điền bằng số đo thật gần nhất phía trước của cùng biến, dù khoảng trống dài bao nhiêu, và gắn cờ điền bằng 1. Ô có số đo thật giữ nguyên giá trị, cờ điền bằng 0. Nếu ô trống nằm ngay đầu chuỗi (chưa có số đo nào phía trước), scripts/build_base_splits.py báo lỗi; dataset này không có trường hợp đó.
 
-![Ví dụ điền](../artifacts/dataset/fig_ffill.png)
+![Ví dụ điền khoảng trống](../artifacts/dataset/fig_ffill.png)
 
-- Hình trái: cả đầu đo trống lúc 10:30 và 10:45; hai ô nhận giá trị 8.54 mg/L của lần đo 10:15.
-- Hình phải: lần ngừng ghi 64.25 giờ; cả sáu biến được chép từ lần đo 13:30 (DO 11.21 mg/L) thành một đường phẳng. Vùng xám là các thời điểm dự báo mà cả 6 giờ nhãn đều là DO điền, nên không có DO thật để tính sai số; các cửa sổ này bị bỏ (mục 4.3).
+**Hình 2.** Điền khoảng trống ở hai lần cả đầu đo ngừng ghi. (a) Lần dài nhất của test (0.5 giờ): cả đầu đo trống lúc 10:30 và 10:45 ngày 2025-04-08; hai ô nhận giá trị 8.54 mg/L của lần đo 10:15. (b) Lần dài nhất của cả chuỗi (64.25 giờ, trong train); cả sáu biến được chép từ lần đo 13:30 ngày 2020-06-12 (DO 11.21 mg/L) thành một đường phẳng. Vùng xám là các thời điểm dự báo mà cả 6 giờ nhãn đều là giá trị điền; các cửa sổ này bị bỏ (mục 3.3). Nguồn: dataset/base_splits/test.csv và train.csv (cột do_mg_l, flag_do_mg_l); hai lần ngừng ghi được chọn theo artifacts/dataset/gap_stats.csv, dòng split = test và split = all, cột longest_all_na_start và longest_all_na_h.
 
 Lý do chọn quy tắc này:
-- Khi DO trống thì gần như cả đầu đo ngừng ghi (mục 4.1). Chép lần đo trước đó là chép một lần đo thật của cả sáu biến, nên các biến vẫn khớp nhau như khi đo.
-- Không có tham số, nhân quả, hệ thống web sẽ làm y hệt.
-- Ô được điền rất ít (dưới 0.4% số ô, mục 4.3), mô hình biết ô nào là ô điền qua cờ, và không bị tính sai số trên giá trị điền.
-- Dùng chung cho mọi thí nghiệm so sánh (dữ liệu gốc, thêm đặc trưng miền, thêm đặc trưng ngữ nghĩa), nên không làm lệch phép so sánh.
+- Khi DO trống thì gần như cả đầu đo ngừng ghi (mục 3.1). Chép lần đo trước đó là chép một lần đo thật của cả sáu biến, nên các biến vẫn khớp nhau như khi đo.
+- Không có tham số, nhân quả, và hệ thống web làm được y hệt.
+- Ô được điền rất ít (dưới 0.4% số ô, Bảng 2), mô hình biết ô nào là ô điền qua cờ điền, và sai số không tính trên giá trị điền.
+- Ba thí nghiệm E1, E2, E3 dùng chung dữ liệu đã làm sạch, nên quy tắc điền không làm lệch phép so sánh giữa chúng.
 
-Nếu ô trống nằm ngay đầu chuỗi (chưa có số đo nào phía trước), scripts/build_base_splits.py báo lỗi; dataset này không có trường hợp đó.
+### 3.3. Kết quả trên ba tập
 
-### 4.3. Kết quả trên ba tập
+**Bảng 2.** Số ô được điền của từng tập.
 
-| | train | val | test |
+| Tập | Số ô (số dòng nhân 6 biến) | Ô được điền (cờ điền bằng 1) | Phần trăm ô được điền (%) |
 |---|---|---|---|
-| Ô được điền (cờ 1) | 4098 (0.36%) | 212 (0.13%) | 107 (0.07%) |
-| Cửa sổ bị bỏ, đầu vào 24 giờ, dự báo 6 giờ | 424 trên 189769 (0.22%) | 0 trên 26185 | 0 trên 26377 |
-| Cửa sổ bị bỏ, đầu vào 7 ngày, dự báo 24 giờ | 225 trên 189121 (0.12%) | 0 trên 26113 | 0 trên 26305 |
+| Train | 1139328 | 4098 | 0.36 |
+| Val | 157248 | 212 | 0.13 |
+| Test | 158400 | 107 | 0.07 |
 
-Cửa sổ chỉ bị bỏ khi nhãn không có mốc DO đo thật nào (vùng xám ở hình mục 4.2); điều này chỉ xảy ra trong các lần ngừng ghi dài của train. Các cửa sổ này không có mốc nào để tính hàm mất mát, nên giữ lại cũng không đóng góp gì vào việc học.
+Phần trăm ô được điền là số ô được điền chia số ô của tập, nhân 100; ví dụ train: 100 x 4098 / 1139328 = 0.36%. Nguồn: artifacts/dataset/split_counts.csv, mỗi dòng một tập (cột so_o, o_dien, pct_o_dien); scripts/verify_dataset.py đếm lại độc lập từ dataset/base_splits/ và so với file này.
 
-Giới hạn: trên khoảng trống dài, giá trị chép lại là đường phẳng, không theo nhịp ngày đêm. Val và test không có khoảng trống nào dài hơn 6.5 giờ, nên chất lượng dự báo khi đầu vào chứa đoạn chép phẳng dài không được đo trong dataset này.
+Một cửa sổ bị bỏ khi nhãn không có mốc DO đo thật nào (vùng xám ở Hình 2b), vì khi đó không có mốc nào để tính hàm mất mát. Điều này chỉ xảy ra trong các lần ngừng ghi dài của train: 424 trên 189769 cửa sổ (0.22%) với cấu hình 24 giờ, 6 giờ và 225 trên 189121 cửa sổ (0.12%) với cấu hình 7 ngày, 24 giờ; val và test không bỏ cửa sổ nào. Nguồn: split_counts.csv, dòng tap = train, cột cua_so_24h_6h, bo_24h_6h, cua_so_7d_24h, bo_7d_24h; số cửa sổ của cả ba tập ở [04_MODEL_TRAINING_EVALUATION.md](04_MODEL_TRAINING_EVALUATION.md) Bảng 3.
 
-## 5. Cờ đánh dấu
+Trên khoảng trống dài, giá trị điền là một đường phẳng, không theo chu kỳ ngày đêm. Val và test không có khoảng trống nào dài hơn 6.5 giờ, nên chất lượng dự báo khi đầu vào chứa đoạn điền dài không được đo trong dataset này.
 
-dataset/base_splits/ gồm train.csv, val.csv, test.csv. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ flag_<tên biến>, ví dụ flag_do_mg_l; dấu thập phân là dấu chấm. Cờ tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2025-01-25 10:30, chỉ độ dẫn trống 6.5 giờ). Ba dòng của train.csv, dòng giữa có cả sáu biến trống trong nguồn và được điền bằng số đo của dòng đầu:
+## 4. Cờ điền
+
+dataset/base_splits/ gồm train.csv, val.csv, test.csv. Mỗi file có cột datetime_pst, sáu biến và sáu cột cờ điền flag_<tên cột biến>, ví dụ flag_do_mg_l; dấu thập phân là dấu chấm. Cờ điền tách theo biến vì trong cùng một mốc có thể có biến đo thật và biến được điền (ví dụ từ 2025-01-25 10:30, chỉ độ dẫn điện trống trong 6.5 giờ). Ba dòng liên tiếp của train.csv, dòng giữa có cả sáu biến trống trong nguồn và được điền bằng số đo của dòng đầu:
 
 ```
 datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag_do_mg_l,flag_water_temp_c,flag_ph,flag_spc_us_cm,flag_turbidity_fnu,flag_chl_fluor_ug_l
@@ -88,28 +81,27 @@ datetime_pst,do_mg_l,water_temp_c,ph,spc_us_cm,turbidity_fnu,chl_fluor_ug_l,flag
 2019-02-05 12:30:00,9.49,11.27,7.56,395,70.33,7.16,0,0,0,0,0,0
 ```
 
-| Cờ | Nghĩa | Giá trị trong file |
+**Bảng 3.** Ý nghĩa của cờ điền.
+
+| Cờ điền | Nghĩa | Giá trị trong file |
 |---|---|---|
 | 0 | Số đo thật | Chép nguyên văn từ nguồn |
 | 1 | Ô trống hoặc ngoài miền, đã điền | Chép nguyên văn số đo thật gần nhất phía trước |
 
-Cách mô hình dùng cờ, ví dụ ô DO lúc 2025-04-08 10:30 (đầu vào 24 giờ, dự báo 6 giờ):
+Cờ điền được dùng theo hai cách:
+- Làm đầu vào: sáu cột cờ điền là sáu trong 12 cột đầu vào của E1, nên mô hình phân biệt được giá trị điền với số đo thật.
+- Làm mặt nạ cho sai số: sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ điền của DO bằng 0. Hàm mất mát khi huấn luyện tính theo cùng cách, nên mô hình học dự báo DO đo thật, không học theo giá trị điền.
 
-| Cửa sổ có thời điểm dự báo | Số cửa sổ | Ô 10:30 nằm ở | Cách dùng |
-|---|---|---|---|
-| 10:45 đến 10:30 hôm sau | 96 | Đầu vào | Mô hình đọc giá trị 8.54 kèm cờ 1, như một trong 12 cột đầu vào (6 biến, 6 cờ) |
-| 04:45 đến 10:30 | 24 | Nhãn | Mốc 10:30 không được tính sai số |
+## 5. Điểm DO đột biến một mốc
 
-Sai số của một cửa sổ là trung bình trên các mốc nhãn có cờ DO bằng 0. Hàm mất mát khi huấn luyện tính theo cùng cách, nên mô hình học dự báo DO đo thật, không học theo giá trị điền.
-
-## 6. Điểm DO đột biến một mốc
-
-Điểm DO đột biến một mốc là mốc mà DO lệch quá 0.8 mg/L so với mốc trước rồi quay lại quá 0.8 mg/L ở mốc sau. Bước nhảy như vậy hiếm: 99% bước thay đổi 15 phút của DO trong train không quá 0.40 mg/L (artifacts/dataset/cleaning_summary_train.csv).
+Một bước thay đổi 15 phút của một biến được coi là lớn bất thường khi độ lớn của nó vượt hai lần phân vị 99% của độ lớn các bước 15 phút của biến đó trên train. Với DO, 99% số bước không quá 0.40 mg/L, nên ngưỡng là 0.8 mg/L; với nhiệt độ nước là 0.28 độ C, với pH là 0.14 (artifacts/dataset/cleaning_summary_train.csv, cột step_p99 là phân vị 99%, buoc_lon là ngưỡng). Điểm DO đột biến một mốc là mốc mà cả bước vào (từ mốc trước) và bước ra (đến mốc sau) của DO đều lớn bất thường và ngược chiều nhau: DO lệch quá 0.8 mg/L rồi quay lại quá 0.8 mg/L.
 
 ![Điểm DO đột biến](../artifacts/dataset/fig_dot_bien.png)
 
-- Có 212 điểm (train 63, val 28, test 121), gần như tất cả trong mùa nóng (tháng 6 đến 9).
-- Không xác định được điểm nào là lỗi: 136 điểm có nhiệt độ hoặc pH đổi cùng lúc, có thể là một khối nước khác đi qua cảm biến; nhưng một trục trặc làm cả đầu đo lệch theo cũng cho dấu hiệu như vậy.
-- Ảnh hưởng đến DO thấp của test: 8 trên 9 mốc DO dưới 5 mg/L và 17 trên 34 mốc dưới 6 mg/L là điểm đột biến, như mốc 3.73 mg/L ở hình.
+**Hình 3.** DO (a) và nhiệt độ nước (b) sáng 2025-08-14, ngày có DO thấp nhất của test. Vòng đỏ là các điểm DO đột biến một mốc; điểm thấp nhất là 3.73 mg/L lúc 10:30. Đường đứt là ngưỡng 6 mg/L. Nguồn: dataset/raw/cemp_MSD_2007_2025_source.csv (số đo gốc); artifacts/dataset/do_reversal_points.csv (các điểm đột biến, cột time và value); ngày được chọn theo feature_stats.csv, dòng split = test, feature = do_mg_l, cột min.
 
-Cả 212 điểm được giữ là số đo thật (cờ 0): muốn nhận ra một điểm đột biến phải có số đo ở mốc sau, nên phép phát hiện không nhân quả và không dùng được cho số đo mới nhất khi chạy thật. Danh sách và phân loại: artifacts/dataset/do_reversal_points.csv, reversal_effect.csv.
+- Có 208 điểm (train 61, val 27, test 120), gần như tất cả (207 điểm) trong mùa nóng (tháng 6 đến 9). Nguồn: artifacts/dataset/reversal_effect.csv, cột so_diem; tháng của từng điểm ở do_reversal_points.csv, cột time.
+- Không xác định được điểm nào là lỗi: ở 57 điểm, bước của nhiệt độ nước hoặc pH tại cùng mốc cũng lớn bất thường, có thể là một khối nước khác đi qua cảm biến; nhưng một trục trặc làm cả đầu đo lệch theo cũng cho dấu hiệu như vậy. Nguồn: do_reversal_points.csv, số dòng có classification = tu_nhien_khoi_nuoc.
+- Ảnh hưởng đến DO thấp của test: 8 trên 9 mốc DO dưới 5 mg/L và 17 trên 34 mốc DO dưới 6 mg/L là điểm đột biến. Nguồn: reversal_effect.csv, dòng tap = test, cột moc_DO_duoi_5_la_dot_bien, moc_DO_duoi_5, moc_DO_duoi_6_la_dot_bien, moc_DO_duoi_6.
+
+Cả 208 điểm được giữ là số đo thật (cờ điền bằng 0): muốn nhận ra một điểm đột biến phải có số đo ở mốc sau, nên phép phát hiện không nhân quả và không áp dụng được cho số đo mới nhất khi chạy thật.

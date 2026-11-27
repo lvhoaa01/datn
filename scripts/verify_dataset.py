@@ -1,14 +1,15 @@
 """Kiểm chứng toàn vẹn dataset, chỉ dùng thư viện chuẩn Python (độc lập với numpy, pandas dùng khi xử lý).
 
 Kiểm tra:
-  1. SHA-256 của các file theo dõi (dataset/, ba tài liệu trong docs/, scripts/, artifacts/dataset/) khớp manifest.
+  1. SHA-256 của các file theo dõi (dataset/, năm tài liệu trong docs/, scripts/, artifacts/dataset/) khớp manifest.
   2. File nguồn: kích thước và MD5 khớp metadata EDI (cemp_edi_1177_9_eml.xml), đúng số dòng, lưới 15 phút đều,
      không trùng mốc.
   3. base_splits: đúng tiêu đề, khoảng thời gian, số dòng; lưới 15 phút liên tục; ba tập nối tiếp, không chồng lấn.
   4. Từng ô so với nguồn, trên chuỗi nối ba tập: số đo hợp lệ (khác NA, trong miền RANGES) có cờ 0 và trùng
      nguyên văn; ô còn lại có cờ 1 và trùng nguyên văn số đo hợp lệ gần nhất phía trước (phải có số đo như vậy).
-  5. Số ô cờ 1 của từng tập khớp FLAG_COUNTS (docs/02_DATA_CLEANING.md mục 4.3).
-  6. Số cửa sổ bị bỏ khớp WINDOWS (docs/04_MODEL_TRAINING_EVALUATION.md mục 2, docs/02_DATA_CLEANING.md mục 4.3).
+  5. Số ô cờ 1 của từng tập khớp FLAG_COUNTS (docs/02_DATA_CLEANING.md mục 3.3).
+  6. Số cửa sổ bị bỏ khớp WINDOWS (docs/04_MODEL_TRAINING_EVALUATION.md mục 2, docs/02_DATA_CLEANING.md mục 3.3);
+     artifacts/dataset/split_counts.csv (nguồn của các bảng đó) khớp FLAG_COUNTS và WINDOWS.
   7. base_domain_splits: hồi quy giữa các đêm train tính lại cho đúng k trong artifacts/dataset/reaeration_k.csv;
      13 cột đầu trùng nguyên văn base_splits; 24 đặc trưng miền tính lại độc lập (định nghĩa của
      common.domain_features viết lại bằng math) lệch không quá 2e-6.
@@ -24,7 +25,7 @@ import sys
 from datetime import datetime, timedelta
 
 from common import (BASE, CHL_FLOOR, CONFIGS, DAY, DOMAIN, DOMAIN_FEATURES, FEATURES, FLAGS, FMT, LAT, LON, M2_EPOCH,
-                    M2_HOURS, NAMES, NIGHT_MIN_STEPS, RANGES, RAW, REAERATION, REPO, SOURCE, SPLITS, read_k)
+                    M2_HOURS, NAMES, NIGHT_MIN_STEPS, RANGES, RAW, REAERATION, REPO, SOURCE, SPLITS, STATS, read_k)
 
 MANIFEST = os.path.join(REPO, "dataset", "manifest_sha256.json")   # đường dẫn trong manifest tính từ gốc repo
 STEP = timedelta(minutes=15)
@@ -126,10 +127,18 @@ def check_windows(splits):
             got[name] = (len(ts), drop)
         check(got == exp, f"windows {cfg}: {got} != {exp}")
         print(f"[6] windows {cfg} (total, dropped): {got}")
+    with open(os.path.join(STATS, "split_counts.csv"), newline="") as f:
+        rows = {r["tap"]: r for r in csv.DictReader(f)}
+    for n in NAMES:
+        r = rows.get(n, {})
+        ok = int(r.get("o_dien", -1)) == FLAG_COUNTS[n] and all(
+            (int(r.get(f"cua_so_{c}", -1)), int(r.get(f"bo_{c}", -1))) == WINDOWS[c][n] for c in WINDOWS)
+        check(ok, f"split_counts.csv {n}: differs from FLAG_COUNTS / WINDOWS")
+    print("[6] split_counts.csv khớp số ô điền và số cửa sổ")
 
 
 def saturation(t, spc):
-    """DO bão hòa (mg/L), Benson và Krause (1984), độ mặn từ độ dẫn theo Schemel (2001); cùng công thức common.do_saturation."""
+    """DO bão hòa (mg/L), Benson và Krause (1980, 1984), độ mặn từ độ dẫn theo Schemel (2001); cùng công thức common.do_saturation."""
     T = t + 273.15
     R = max(spc, 0.0) / 53087.0
     sal = 0.0120 - 0.2174 * R**0.5 + 25.3283 * R + 13.7714 * R**1.5 - 6.4788 * R**2 + 2.5842 * R**2.5
@@ -138,7 +147,7 @@ def saturation(t, spc):
 
 
 def solar_sin(dt):
-    """sin độ cao mặt trời tại trạm (Spencer 1971); cùng công thức common.solar_elevation_sin."""
+    """sin độ cao mặt trời tại trạm (NOAA GMD, chuỗi Fourier của Spencer 1971); cùng công thức common.solar_elevation_sin."""
     hr = dt.hour + dt.minute / 60
     g = 2 * math.pi / 365 * (dt.timetuple().tm_yday - 1 + (hr - 12) / 24)
     decl = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g) - 0.006758 * math.cos(2 * g)

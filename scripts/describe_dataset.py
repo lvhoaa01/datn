@@ -1,10 +1,15 @@
 """Thống kê mô tả ba tập train, val, test trước làm sạch, dùng cho docs/01_DATASET_ANALYSIS.md mục 3.
 
 Ghi vào artifacts/dataset/: feature_stats (từng biến), gap_stats (khoảng trống theo dòng), do_dynamics (DO theo tập),
-monthly_dynamics, split_by_regime (theo tháng, theo mùa), monthly_by_year (từng tháng của từng năm). Trong do_dynamics, month_var_explained_pct là phần trăm
+monthly_dynamics, split_by_regime (theo tháng, theo mùa), monthly_by_year (từng tháng của từng năm), low_do_episodes
+(từng đợt DO dưới 6 và dưới 5 mg/L), diel_profile (DO trung bình theo giờ trong ngày của từng giai đoạn mùa),
+daily_series (trung bình ngày của năm biến, DO thấp nhất và cao nhất trong ngày). Trong gap_stats, do_na_ca_dau_do là
+số ô DO trống mà năm biến còn lại cùng trống; longest_all_na_h, longest_all_na_start là độ dài (giờ) và thời điểm bắt
+đầu của lần cả đầu đo ngừng ghi dài nhất. Trong do_dynamics, month_var_explained_pct là phần trăm
 phương sai DO giải thích bởi trung bình từng tháng, year_mean_min, year_mean_max là trung bình năm nhỏ nhất, lớn nhất; diel_min_hour, diel_max_hour là giờ
 có DO trung bình thấp nhất, cao nhất trong ngày. Cột do_change_6h_rms: căn bậc hai của trung bình bình phương
-hiệu DO 6 giờ sau trừ DO hiện tại (mg/L), đo mức biến động. Danh sách khoảng trống dài nằm ở gap_events.csv
+hiệu DO 6 giờ sau trừ DO hiện tại (mg/L), đo mức biến động. Cột temp_mean_train của monthly_dynamics là
+nhiệt độ nước trung bình tháng chỉ tính trên train: căn cứ chia giai đoạn mùa. Danh sách khoảng trống dài nằm ở gap_events.csv
 (scripts/gap_study.py).
 Chạy từ gốc repo: uv run python scripts/describe_dataset.py
 """
@@ -15,6 +20,7 @@ import pandas as pd
 from common import FEATURES as F, NAMES, STATS as OUT, do_saturation, load_raw_split, runs
 
 STEP_H = 0.25             # một mốc = 0.25 giờ
+SEASONS = ["lanh", "xuan", "nong", "thu"]
 
 
 def load(name):
@@ -75,10 +81,15 @@ def main():
     for n, d in S.items():
         allna = d[F].isna().any(axis=1).to_numpy()
         st, ln = runs(allna)
+        whole = d[F].isna().all(axis=1).to_numpy()                  # cả đầu đo ngừng ghi: sáu biến cùng trống
+        ws, wl = runs(whole)
         r = dict(split=n, rows=len(d), start=str(d.index[0]), end=str(d.index[-1]), days=round(len(d) / 96, 1),
                  rows_any_na=int(allna.sum()), pct_any_na=round(allna.mean() * 100, 6), na_runs=len(ln),
                  na_runs_le_1h=int((ln <= 4).sum()),
-                 longest_na_run_h=float(ln.max() * STEP_H) if len(ln) else 0.0)
+                 longest_na_run_h=float(ln.max() * STEP_H) if len(ln) else 0.0,
+                 do_na_ca_dau_do=int((d["do_mg_l"].isna() & d[F[1:]].isna().all(axis=1)).sum()),
+                 longest_all_na_h=float(wl.max() * STEP_H) if len(wl) else 0.0,
+                 longest_all_na_start=str(d.index[ws[int(np.argmax(wl))]]) if len(wl) else "")
         for c in F:
             s_, l_ = runs(d[c].isna().to_numpy())
             r[f"maxgap_h_{c}"] = float(l_.max() * STEP_H) if len(l_) else 0.0
@@ -113,6 +124,7 @@ def main():
     day = do.resample("D")
     dr = (day.max() - day.min())[day.count() >= 86]
     e6 = (do.shift(-24) - do)
+    tr = S["train"]
     months = sorted(set(full.index.strftime("%Y-%m")))       # các tháng có dữ liệu, dạng YYYY-MM
     for m in range(1, 13):
         sel = full.index.month == m
@@ -123,7 +135,8 @@ def main():
                          diel_range_median=dr[dr.index.month == m].median(), temp_mean=full.loc[sel, "water_temp_c"].mean(),
                          chl_mean=full.loc[sel, "chl_fluor_ug_l"].mean(), spc_mean=full.loc[sel, "spc_us_cm"].mean(),
                          turb_mean=full.loc[sel, "turbidity_fnu"].mean(),
-                         do_change_6h_rms=np.sqrt((e6[sel] ** 2).mean()), episodes_lt6=ep6, episodes_lt5=ep5))
+                         do_change_6h_rms=np.sqrt((e6[sel] ** 2).mean()), episodes_lt6=ep6, episodes_lt5=ep5,
+                         temp_mean_train=tr.loc[tr.index.month == m, "water_temp_c"].mean()))
     pd.DataFrame(rows).round(6).to_csv(os.path.join(OUT, "monthly_dynamics.csv"), index=False)
     rows = []
     for n in NAMES:
@@ -151,6 +164,31 @@ def main():
                          turb_mean=x["turbidity_fnu"].mean(), turb_max=x["turbidity_fnu"].max(),
                          episodes_lt6=episodes((x["do_mg_l"] < 6).fillna(False))))
     pd.DataFrame(rows).round(6).to_csv(os.path.join(OUT, "monthly_by_year.csv"), index=False)
+    # 6. từng đợt DO thấp (docs/01_DATASET_ANALYSIS.md mục 3.4)
+    rows = []
+    split_of = pd.Series(np.concatenate([[n] * len(S[n]) for n in NAMES]), index=full.index)
+    for thr in (6, 5):
+        for a, ln in episode_spans((full["do_mg_l"] < thr).fillna(False).to_numpy()):
+            x = full.iloc[a:a + ln]
+            rows.append(dict(nguong=thr, tap=split_of.iloc[a], bat_dau=str(x.index[0]), ket_thuc=str(x.index[-1]),
+                             so_gio=ln * STEP_H, do_thap_nhat=x["do_mg_l"].min(),
+                             thoi_diem_thap_nhat=str(x["do_mg_l"].idxmin()), nhiet_do_min=x["water_temp_c"].min(),
+                             nhiet_do_max=x["water_temp_c"].max()))
+    pd.DataFrame(rows).round(6).to_csv(os.path.join(OUT, "low_do_episodes.csv"), index=False)
+    # 7. DO trung bình theo giờ trong ngày của từng giai đoạn mùa (docs/01 Hình 1a)
+    hour = full.index.hour + full.index.minute / 60
+    reg = full.index.month.map(season)
+    rows = [dict(mua=k, gio=h, do_tb=v) for k in SEASONS
+            for h, v in full.loc[reg == k, "do_mg_l"].groupby(hour[reg == k]).mean().items()]
+    pd.DataFrame(rows).round(6).to_csv(os.path.join(OUT, "diel_profile.csv"), index=False)
+    # 8. chuỗi theo ngày (docs/01 Hình 2)
+    day = full[F].resample("D").mean()
+    day.columns = [f"{c}_tb" for c in F]
+    dd = full["do_mg_l"].resample("D")
+    day.insert(1, "do_mg_l_min", dd.min())
+    day.insert(2, "do_mg_l_max", dd.max())
+    day.index = day.index.strftime("%Y-%m-%d")
+    day.round(6).rename_axis("ngay").to_csv(os.path.join(OUT, "daily_series.csv"))
     print("written to", OUT)
 
 

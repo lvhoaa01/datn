@@ -26,26 +26,31 @@ SPLITS = {"train": ("2019-01-01 00:00:00", "2024-06-01 00:00:00"),
           "val": ("2024-06-01 00:00:00", "2025-03-01 00:00:00"),
           "test": ("2025-03-01 00:00:00", "2025-12-01 00:00:00")}
 NAMES = list(SPLITS)
-# miền vật lý chấp nhận [min, max], theo đơn vị của từng biến
-RANGES = {"do_mg_l": (0, 20), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
+# miền chấp nhận [min, max] theo đơn vị của từng biến: rộng hơn mọi số đo đã thẩm định của cả file nguồn 2007 đến 2025
+# (artifacts/dataset/cleaning_summary_train.csv, cột nguon_min, nguon_max), đủ hẹp để bắt lỗi đơn vị, lỗi cảm biến
+RANGES = {"do_mg_l": (0, 30), "water_temp_c": (0, 35), "ph": (6, 10), "spc_us_cm": (20, 3000),
           "turbidity_fnu": (0, 1000), "chl_fluor_ug_l": (0, 200)}
 DAY = 96                  # số mốc 15 phút trong một ngày
 OBSERVED, FILLED = 0, 1    # giá trị cờ: số đo thật, ô điền bằng số đo thật gần nhất phía trước (ffill)
 # cấu hình dự báo: (độ dài đầu vào, độ dài nhãn) tính bằng số mốc; 24h_6h là cấu hình chính
 CONFIGS = {"24h_6h": (96, 24), "7d_24h": (672, 96)}
-# 24 đặc trưng miền (docs/03_DOMAIN_FEATURES_ANALYSIS.md), theo cơ chế: bão hòa; ánh sáng; quang hợp; hô hấp;
-# chu kỳ ngày của DO; thay đổi ngắn hạn; cacbonat; tảo; vận chuyển; triều M2; lịch
-DOMAIN_FEATURES = ["do_sat_mgl", "do_sat_pct", "do_deficit",
-                   "light",
-                   "gpp_now",
-                   "er_now",
-                   "do_change_24h", "do_std_24h", "do_anom_24h",
-                   "do_change_1h", "do_change_3h", "temp_change_3h",
-                   "ph_change_3h", "ph_change_24h",
-                   "log_chl",
-                   "spc_change_24h",
-                   "m2_sin", "m2_cos",
-                   "hour_sin", "hour_cos", "hour2_sin", "hour2_cos", "doy_sin", "doy_cos"]
+# tên chuẩn (tiếng Việt) của sáu biến, dùng thống nhất trong hình và tài liệu
+VAR_NAMES = {"do_mg_l": "DO", "water_temp_c": "Nhiệt độ nước", "ph": "pH", "spc_us_cm": "Độ dẫn điện",
+             "turbidity_fnu": "Độ đục", "chl_fluor_ug_l": "Chlorophyll"}
+UNITS = {"do_mg_l": "mg/L", "water_temp_c": "độ C", "ph": "", "spc_us_cm": "uS/cm", "turbidity_fnu": "FNU",
+         "chl_fluor_ug_l": "ug/L"}
+# 10 nhóm của 24 đặc trưng miền (docs/03_DOMAIN_FEATURES_ANALYSIS.md mục 4): (khóa, tên chuẩn, các cột)
+DOMAIN_GROUPS = [("bao_hoa", "Bão hòa oxy", ["do_sat_mgl", "do_sat_pct", "do_deficit"]),
+                 ("anh_sang", "Ánh sáng", ["light"]),
+                 ("trao_doi_chat", "Quang hợp và hô hấp", ["gpp_now", "er_now"]),
+                 ("do_24h", "Thống kê DO 24 giờ", ["do_change_24h", "do_std_24h", "do_anom_24h"]),
+                 ("ngan_han", "Biến thiên ngắn hạn", ["do_change_1h", "do_change_3h", "temp_change_3h"]),
+                 ("bien_thien_ph", "Biến thiên pH", ["ph_change_3h", "ph_change_24h"]),
+                 ("log_chl", "Logarit chlorophyll", ["log_chl"]),
+                 ("bien_thien_spc", "Biến thiên độ dẫn điện", ["spc_change_24h"]),
+                 ("trieu", "Thủy triều M2", ["m2_sin", "m2_cos"]),
+                 ("lich", "Lịch", ["hour_sin", "hour_cos", "hour2_sin", "hour2_cos", "doy_sin", "doy_cos"])]
+DOMAIN_FEATURES = [c for _, _, cols in DOMAIN_GROUPS for c in cols]
 LAT, LON = 37.786, -121.306          # tọa độ trạm MSD (độ), dùng tính độ cao mặt trời
 M2_HOURS = 12.4206                   # chu kỳ triều bán nhật mặt trăng M2 (giờ)
 M2_EPOCH = "2019-01-01 00:00:00"     # mốc tính pha M2, đầu chuỗi dùng cho mô hình
@@ -117,7 +122,8 @@ def salinity(spc_us_cm):
 def do_saturation(temp_c, spc_us_cm, sal=None):
     """DO bão hòa (mg/L) theo nhiệt độ (độ C) và độ dẫn (uS/cm), áp suất 1 atm.
 
-    Công thức Benson và Krause (1984) theo APHA; độ mặn theo salinity (Schemel 2001), hoặc truyền sẵn qua sal.
+    Công thức Benson và Krause (1980, 1984), phương trình 7 và 8 của USGS (2011, Technical Memorandum 2011.03);
+    độ mặn theo salinity (Schemel 2001), hoặc truyền sẵn qua sal.
     """
     import numpy as np
     T = temp_c + 273.15
@@ -128,7 +134,11 @@ def do_saturation(temp_c, spc_us_cm, sal=None):
 
 
 def solar_elevation_sin(t):
-    """sin độ cao mặt trời tại trạm theo giờ PST (chuỗi datetime): xích vĩ và phương trình thời gian theo Spencer (1971)."""
+    """sin độ cao mặt trời tại trạm theo giờ PST (chuỗi datetime), theo NOAA GMD (General Solar Position Calculations).
+
+    Xích vĩ và phương trình thời gian là chuỗi Fourier của Spencer (1971); dùng 365 ngày cho mọi năm (NOAA dùng 366 ở năm
+    nhuận, light lệch tối đa 0.004).
+    """
     import numpy as np
     doy = t.dt.day_of_year.to_numpy()
     hr = (t.dt.hour + t.dt.minute / 60).to_numpy()
