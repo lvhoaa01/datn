@@ -100,6 +100,8 @@ $$\text{do\_sat\_mgl} = C^{*}_t, \qquad \text{do\_sat\_pct} = 100\,\frac{DO_t}{C
 
 **Ví dụ.** $R$ = 144 / 53087 = 0.002713, theo (2) $S$ = 0.0713. $T_K$ = 22.37 + 273.15 = 295.52, theo (3) $\ln C^{*}$ = 2.1608, nên $C^{*}$ = 8.678 mg/L. Khi đó do_sat_pct = 100 x 9.49 / 8.678 = 109.4% và do_deficit = 8.678 - 9.49 = -0.812 mg/L: nước thừa oxy, oxy đang thoát ra không khí.
 
+**Nguồn hệ số của (2).** Bản gốc của Schemel (2001) không truy cập được. Sáu hệ số và hằng số 53087 trong (2) được đối chiếu với mã nguồn gói R compensateR (tệp R/salinity.R): gói dùng đúng các hệ số này và ghi nguồn là Schemel (2001) như được trình bày trong tài liệu USGS Techniques and Methods 1-D3. Một kiểm tra độc lập với nguồn này nằm ở đoạn dưới: thay (2) bằng công thức của USGS (2011) gần như không đổi kết quả.
+
 **Giả định.** Áp suất lấy 1 atm vì trạm không đo áp suất khí quyển; trạm nằm gần mực nước biển. Nước ở trạm gần như ngọt (độ mặn lớn nhất 0.61), nên thay công thức (2) bằng công thức đổi độ dẫn điện sang độ mặn của USGS (2011, phương trình 4) chỉ làm DO bão hòa đổi tối đa 0.005 mg/L (artifacts/dataset/salinity_check.csv, cột sal_schemel_max và do_sat_diff_max).
 
 ### 4.2. Ánh sáng: light
@@ -304,16 +306,17 @@ $$\text{hour\_sin} = \sin 2\pi u_t, \quad \text{hour\_cos} = \cos 2\pi u_t, \qua
 
 1. Benson, B. B., and Krause, D. (1980). The concentration and isotopic fractionation of gases dissolved in freshwater in equilibrium with the atmosphere. 1. Oxygen. Limnology and Oceanography, 25(4), 662-671.
 2. Benson, B. B., and Krause, D. (1984). The concentration and isotopic fractionation of oxygen dissolved in freshwater and seawater in equilibrium with the atmosphere. Limnology and Oceanography, 29(3), 620-632.
-3. Hornberger, G. M., and Kelly, M. G. (1975). Atmospheric reaeration in a river using productivity analysis. Journal of the Environmental Engineering Division, 101(5), 729-739.
-4. Lorenzen, C. J. (1966). A method for the continuous measurement of in vivo chlorophyll concentration. Deep Sea Research and Oceanographic Abstracts, 13(2), 223-227. https://doi.org/10.1016/0011-7471(66)91102-8
-5. Nelson, M. M., and Tran, A. H. (2026). Sacramento-San Joaquin Bay-Delta Continuous (15 Minute) water quality monitoring data collected by the Continuous Environmental Monitoring Program, DWR, 2005-2025. Phiên bản 9 (edi.1177.9). Environmental Data Initiative. https://doi.org/10.6073/pasta/af06602f2547c66d9a8459f2dd7e4188
-6. NOAA Center for Operational Oceanographic Products and Services (CO-OPS). Harmonic Constituents, trạm 9415102 Martinez-Amorco Pier, CA. https://tidesandcurrents.noaa.gov/harcon.html?id=9415102 (dữ liệu: https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/9415102/harcon.json)
-7. NOAA Global Monitoring Division (không ghi năm). General Solar Position Calculations. https://gml.noaa.gov/grad/solcalc/solareqns.PDF
-8. O'Connor, D. J., and Dobbins, W. E. (1958). Mechanism of reaeration in natural streams. Transactions of the American Society of Civil Engineers, 123, 641-666. https://doi.org/10.1061/TACEAT.0007609
-9. Odum, H. T. (1956). Primary production in flowing waters. Limnology and Oceanography, 1(2), 102-117.
-10. pvlib python. Hàm pvlib.solarposition.equation_of_time_spencer71, phần ghi chú về hệ số của Spencer (1971). https://pvlib-python.readthedocs.io/en/latest/reference/generated/pvlib.solarposition.equation_of_time_spencer71.html
-11. Schemel, L. E. (2001). Simplified conversions between specific conductance and salinity units for use with data from monitoring stations. Interagency Ecological Program Newsletter, 14(1), 17-18. https://pubs.usgs.gov/publication/70174311
-12. Spencer, J. W. (1971). Fourier series representation of the position of the sun. Search, 2(5), 172.
-13. U.S. Environmental Protection Agency. CADDIS Volume 2: pH (mục High pH và Low pH). https://www.epa.gov/caddis-vol2/pH
-14. U.S. Geological Survey (2011). Change to solubility equations for oxygen in water. Office of Water Quality Technical Memorandum 2011.03. https://water.usgs.gov/water-resources/memos/documents/WQ.2011.03.pdf
-15. U.S. Geological Survey. streamMetabolizer (gói R ước lượng trao đổi chất dòng sông), hàm calc_light. https://doi-usgs.github.io/streamMetabolizer/reference/calc_light.html
+3. compensateR (gói R bù nhiệt độ và độ mặn cho số đo cảm biến chất lượng nước, kho GitHub acgold/compensateR), tệp R/salinity.R. https://rdrr.io/github/acgold/compensateR/src/R/salinity.R
+4. Hornberger, G. M., and Kelly, M. G. (1975). Atmospheric reaeration in a river using productivity analysis. Journal of the Environmental Engineering Division, 101(5), 729-739.
+5. Lorenzen, C. J. (1966). A method for the continuous measurement of in vivo chlorophyll concentration. Deep Sea Research and Oceanographic Abstracts, 13(2), 223-227. https://doi.org/10.1016/0011-7471(66)91102-8
+6. Nelson, M. M., and Tran, A. H. (2026). Sacramento-San Joaquin Bay-Delta Continuous (15 Minute) water quality monitoring data collected by the Continuous Environmental Monitoring Program, DWR, 2005-2025. Phiên bản 9 (edi.1177.9). Environmental Data Initiative. https://doi.org/10.6073/pasta/af06602f2547c66d9a8459f2dd7e4188
+7. NOAA Center for Operational Oceanographic Products and Services (CO-OPS). Harmonic Constituents, trạm 9415102 Martinez-Amorco Pier, CA. https://tidesandcurrents.noaa.gov/harcon.html?id=9415102 (dữ liệu: https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/9415102/harcon.json)
+8. NOAA Global Monitoring Division (không ghi năm). General Solar Position Calculations. https://gml.noaa.gov/grad/solcalc/solareqns.PDF
+9. O'Connor, D. J., and Dobbins, W. E. (1958). Mechanism of reaeration in natural streams. Transactions of the American Society of Civil Engineers, 123, 641-666. https://doi.org/10.1061/TACEAT.0007609
+10. Odum, H. T. (1956). Primary production in flowing waters. Limnology and Oceanography, 1(2), 102-117.
+11. pvlib python. Hàm pvlib.solarposition.equation_of_time_spencer71, phần ghi chú về hệ số của Spencer (1971). https://pvlib-python.readthedocs.io/en/latest/reference/generated/pvlib.solarposition.equation_of_time_spencer71.html
+12. Schemel, L. E. (2001). Simplified conversions between specific conductance and salinity units for use with data from monitoring stations. Interagency Ecological Program Newsletter, 14(1), 17-18. https://pubs.usgs.gov/publication/70174311 (bản gốc không truy cập được; hệ số đối chiếu qua tài liệu 3)
+13. Spencer, J. W. (1971). Fourier series representation of the position of the sun. Search, 2(5), 172.
+14. U.S. Environmental Protection Agency. CADDIS Volume 2: pH (mục High pH và Low pH). https://www.epa.gov/caddis-vol2/pH
+15. U.S. Geological Survey (2011). Change to solubility equations for oxygen in water. Office of Water Quality Technical Memorandum 2011.03. https://water.usgs.gov/water-resources/memos/documents/WQ.2011.03.pdf
+16. U.S. Geological Survey. streamMetabolizer (gói R ước lượng trao đổi chất dòng sông), hàm calc_light. https://doi-usgs.github.io/streamMetabolizer/reference/calc_light.html
